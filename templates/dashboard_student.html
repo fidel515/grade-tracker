@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>GradeVault — My Grades</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="/static/css/style.css"/>
+  <style>
+    .top-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:2rem}
+    .welcome{font-size:1.5rem;font-weight:800;letter-spacing:-0.03em}
+    .welcome span{color:var(--accent)}
+    .role-badge{background:rgba(61,214,140,0.15);border:1px solid rgba(61,214,140,0.3);color:var(--green);border-radius:20px;padding:4px 14px;font-size:0.75rem;font-family:var(--font-mono);font-weight:600}
+    .logout-btn{background:none;border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:8px 16px;font-family:var(--font-display);font-size:0.82rem;cursor:pointer;transition:all 0.2s}
+    .logout-btn:hover{border-color:var(--red);color:var(--red)}
+    .no-grades{text-align:center;padding:4rem;color:var(--muted);font-family:var(--font-mono);font-size:0.9rem;background:var(--surface);border:1px dashed var(--border);border-radius:var(--radius)}
+
+    /* ── Tabs ── */
+    .tabs{display:flex;gap:4px;background:var(--surface);border:1px solid var(--border);padding:4px;border-radius:10px;margin-bottom:2rem;width:fit-content}
+    .tab{background:none;border:none;color:var(--muted);font-family:var(--font-display);font-size:0.85rem;font-weight:600;padding:6px 18px;border-radius:7px;cursor:pointer;transition:all 0.2s}
+    .tab.active{background:var(--accent);color:#0d0f14}
+    .tab-content{display:none}.tab-content.active{display:block;animation:fadeUp 0.3s ease}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+    /* ── Change Password Card ── */
+    .change-pw-card{
+      background:var(--surface);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      padding:2rem;
+      max-width:460px;
+    }
+    .change-pw-card h2{
+      font-size:1rem;
+      font-weight:700;
+      letter-spacing:0.05em;
+      text-transform:uppercase;
+      color:var(--muted);
+      margin-bottom:1.5rem;
+    }
+    .pw-group{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      margin-bottom:1.2rem;
+    }
+    .pw-group label{
+      font-size:0.75rem;
+      font-weight:600;
+      letter-spacing:0.06em;
+      text-transform:uppercase;
+      color:var(--muted);
+      font-family:var(--font-mono);
+    }
+    .pw-group .password-wrap input{
+      background:var(--surface2);
+      border:1px solid var(--border);
+      border-radius:8px;
+      padding:12px 44px 12px 14px;
+      color:var(--text);
+      font-family:var(--font-display);
+      font-size:0.9rem;
+      outline:none;
+      transition:border-color 0.2s;
+      width:100%;
+    }
+    .pw-group .password-wrap input:focus{border-color:var(--accent)}
+
+    /* Password strength bar */
+    .strength-bar{
+      height:4px;
+      border-radius:4px;
+      background:var(--surface2);
+      margin-top:6px;
+      overflow:hidden;
+    }
+    .strength-fill{
+      height:100%;
+      border-radius:4px;
+      width:0%;
+      transition:width 0.3s ease, background 0.3s ease;
+    }
+    .strength-label{
+      font-size:0.72rem;
+      font-family:var(--font-mono);
+      color:var(--muted);
+      margin-top:4px;
+    }
+
+    /* Info box showing default password hint */
+    .info-hint{
+      background:rgba(79,142,247,0.08);
+      border:1px solid rgba(79,142,247,0.2);
+      border-radius:8px;
+      padding:10px 14px;
+      font-size:0.8rem;
+      color:var(--muted);
+      font-family:var(--font-mono);
+      margin-bottom:1.5rem;
+    }
+  </style>
+</head>
+<body>
+<main style="max-width:900px;margin:0 auto;padding:2.5rem 2rem">
+
+  <!-- Top bar -->
+  <div class="top-bar">
+    <div style="display:flex;align-items:center;gap:12px">
+      <span style="color:var(--accent);font-size:1.6rem">◈</span>
+      <div>
+        <div class="welcome">Hello, <span>{{ user.fullname }}</span></div>
+        <div style="color:var(--muted);font-size:0.8rem;font-family:var(--font-mono)">Student Dashboard</div>
+      </div>
+      <span class="role-badge">👨‍🎓 Student</span>
+    </div>
+    <button class="logout-btn" onclick="logout()">Sign Out</button>
+  </div>
+
+  <!-- Tabs: My Grades | Change Password -->
+  <div class="tabs">
+    <button class="tab active" data-tab="grades">My Grades</button>
+    <button class="tab" data-tab="password">Change Password</button>
+  </div>
+
+
+  <!-- ===== TAB 1: MY GRADES ===== -->
+  <div id="tab-grades" class="tab-content active">
+
+    <!-- Summary stat cards -->
+    <div class="stats-grid" style="margin-bottom:2rem">
+      <div class="stat-card accent">
+        <span class="stat-label">My Average</span>
+        <span class="stat-value" id="val-avg">—</span>
+      </div>
+      <div class="stat-card" id="status-card">
+        <span class="stat-label">My Status</span>
+        <span class="stat-value" id="val-status">—</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Subjects</span>
+        <span class="stat-value" id="val-subjects">—</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Total Grades</span>
+        <span class="stat-value" id="val-total">—</span>
+      </div>
+    </div>
+
+    <!-- Grade records filled by JavaScript -->
+    <div class="section-heading"><h2>My Grades</h2></div>
+    <div id="grades-container">
+      <div class="no-grades">Loading your grades...</div>
+    </div>
+
+  </div>
+
+
+  <!-- ===== TAB 2: CHANGE PASSWORD ===== -->
+  <div id="tab-password" class="tab-content">
+
+    <div class="page-title">
+      <h1>Change Password</h1>
+      <p>Update your login password</p>
+    </div>
+
+    <!-- Hint for first-time users -->
+    <div class="info-hint">
+      🔑 First time logging in? Your default password is the same as your <strong>username</strong>. Change it here to something secure.
+    </div>
+
+    <div class="change-pw-card">
+      <h2>Update Password</h2>
+
+      <!-- Current password -->
+      <div class="pw-group">
+        <label for="current-pw">Current Password</label>
+        <div class="password-wrap">
+          <input type="password" id="current-pw" placeholder="Enter your current password"/>
+          <button type="button" class="eye-btn" onclick="togglePw('current-pw', this)" title="Show/hide">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:18px;height:18px">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- New password with strength indicator -->
+      <div class="pw-group">
+        <label for="new-pw">New Password</label>
+        <div class="password-wrap">
+          <input type="password" id="new-pw" placeholder="Enter a new password" oninput="checkStrength(this.value)"/>
+          <button type="button" class="eye-btn" onclick="togglePw('new-pw', this)" title="Show/hide">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:18px;height:18px">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+            </svg>
+          </button>
+        </div>
+        <!-- Password strength bar -->
+        <div class="strength-bar"><div class="strength-fill" id="strength-fill"></div></div>
+        <div class="strength-label" id="strength-label">Enter a password</div>
+      </div>
+
+      <!-- Confirm new password -->
+      <div class="pw-group">
+        <label for="confirm-pw">Confirm New Password</label>
+        <div class="password-wrap">
+          <input type="password" id="confirm-pw" placeholder="Repeat your new password"/>
+          <button type="button" class="eye-btn" onclick="togglePw('confirm-pw', this)" title="Show/hide">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:18px;height:18px">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Submit button -->
+      <button class="btn-primary" style="width:100%;margin-top:0.5rem" onclick="changePassword()">
+        Update Password
+      </button>
+
+      <!-- Success / error message -->
+      <div id="pw-msg" class="msg" style="margin-top:12px"></div>
+
+    </div>
+  </div>
+
+</main>
+<div id="toast" class="toast"></div>
+
+<script>
+  // ── Tab switching ─────────────────────────────────────────
+  document.querySelectorAll(".tab").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".tab").forEach(b => b.classList.remove("active"));
+      document.querySelectorAll(".tab-content").forEach(s => s.classList.remove("active"));
+      btn.classList.add("active");
+      document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
+    });
+  });
+
+
+  // ── Load my grades ────────────────────────────────────────
+  async function loadMyGrades() {
+    const res  = await fetch("/api/my-grades");
+    const data = await res.json();
+    const container = document.getElementById("grades-container");
+
+    // Update summary cards
+    document.getElementById("val-avg").textContent    = data.average !== null ? data.average + "%" : "—";
+    document.getElementById("val-status").textContent = data.status || "—";
+    document.getElementById("val-total").textContent  = data.grades ? data.grades.length : 0;
+
+    // Count unique subjects
+    const subjects = data.grades ? [...new Set(data.grades.map(g => g.subject))] : [];
+    document.getElementById("val-subjects").textContent = subjects.length;
+
+    // Color the status card green or red
+    const statusCard = document.getElementById("status-card");
+    if (data.status === "Pass")      statusCard.classList.add("green");
+    else if (data.status === "Fail") statusCard.classList.add("red");
+
+    // Show empty message if no grades yet
+    if (!data.grades || !data.grades.length) {
+      container.innerHTML = '<div class="no-grades">No grades recorded yet. Your teacher will add them soon! 📚</div>';
+      return;
+    }
+
+    // Group grades by subject
+    const bySubject = {};
+    data.grades.forEach(g => {
+      if (!bySubject[g.subject]) bySubject[g.subject] = [];
+      bySubject[g.subject].push(g);
+    });
+
+    // Build a card per subject
+    container.innerHTML = Object.entries(bySubject).map(([subject, grades]) => {
+      const avg = Math.round(grades.reduce((sum, g) => sum + (g.grade / g.max_grade) * 100, 0) / grades.length);
+      const fillClass = avg >= 70 ? "good" : avg >= 50 ? "mid" : "bad";
+      return `
+      <div class="grade-record-card" style="margin-bottom:1rem">
+        <div class="grc-header">
+          <div class="grc-name">${subject}</div>
+          <span style="font-family:var(--font-mono);font-size:1rem;font-weight:700;color:${avg>=50?'var(--green)':'var(--red)'}">${avg}%</span>
+        </div>
+        <div class="progress-bar" style="margin-bottom:1rem">
+          <div class="progress-fill ${fillClass}" style="width:${avg}%"></div>
+        </div>
+        <table class="grc-table">
+          <thead><tr><th>Score</th><th>Out of</th><th>Percentage</th><th>Date</th></tr></thead>
+          <tbody>
+            ${grades.map(g => {
+              const pct  = Math.round((g.grade / g.max_grade) * 100);
+              const date = g.created_at ? g.created_at.split(" ")[0] : "—";
+              return `<tr>
+                <td style="font-family:var(--font-mono);font-weight:700">${g.grade}</td>
+                <td style="font-family:var(--font-mono)">${g.max_grade}</td>
+                <td style="font-family:var(--font-mono);color:${pct>=50?'var(--green)':'var(--red)'}">${pct}%</td>
+                <td style="font-family:var(--font-mono);color:var(--muted);font-size:0.8rem">${date}</td>
+              </tr>`;
+            }).join("")}
+          </tbody>
+        </table>
+      </div>`;
+    }).join("");
+  }
+
+
+  // ── Change Password ───────────────────────────────────────
+  async function changePassword() {
+    const currentPw = document.getElementById("current-pw").value;
+    const newPw     = document.getElementById("new-pw").value;
+    const confirmPw = document.getElementById("confirm-pw").value;
+    const msg       = document.getElementById("pw-msg");
+
+    // Clear previous message
+    msg.textContent = "";
+    msg.className   = "msg";
+
+    // Validate fields are not empty
+    if (!currentPw || !newPw || !confirmPw) {
+      msg.textContent = "Please fill in all fields.";
+      msg.className   = "msg error";
+      return;
+    }
+
+    // Check new passwords match
+    if (newPw !== confirmPw) {
+      msg.textContent = "New passwords do not match.";
+      msg.className   = "msg error";
+      return;
+    }
+
+    // Check new password is at least 6 characters
+    if (newPw.length < 6) {
+      msg.textContent = "New password must be at least 6 characters.";
+      msg.className   = "msg error";
+      return;
+    }
+
+    // Check new password is different from current
+    if (currentPw === newPw) {
+      msg.textContent = "New password must be different from current password.";
+      msg.className   = "msg error";
+      return;
+    }
+
+    // Send request to backend
+    const res  = await fetch("/api/change-password", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ current_password: currentPw, new_password: newPw })
+    });
+    const data = await res.json();
+
+    if (data.error) {
+      msg.textContent = data.error;
+      msg.className   = "msg error";
+    } else {
+      // Success — clear fields and show success message
+      msg.textContent = "✓ Password updated successfully!";
+      msg.className   = "msg success";
+      document.getElementById("current-pw").value = "";
+      document.getElementById("new-pw").value     = "";
+      document.getElementById("confirm-pw").value = "";
+      document.getElementById("strength-fill").style.width      = "0%";
+      document.getElementById("strength-label").textContent     = "Enter a password";
+      showToast("Password updated!", "success");
+    }
+  }
+
+
+  // ── Password Strength Checker ─────────────────────────────
+  // Shows a coloured bar indicating how strong the password is
+
+  function checkStrength(pw) {
+    const fill  = document.getElementById("strength-fill");
+    const label = document.getElementById("strength-label");
+
+    let score = 0;
+    if (pw.length >= 6)                    score++; // at least 6 chars
+    if (pw.length >= 10)                   score++; // at least 10 chars
+    if (/[A-Z]/.test(pw))                  score++; // has uppercase letter
+    if (/[0-9]/.test(pw))                  score++; // has a number
+    if (/[^A-Za-z0-9]/.test(pw))          score++; // has special character
+
+    const levels = [
+      { width: "0%",   color: "var(--border)",  text: "Enter a password" },
+      { width: "20%",  color: "var(--red)",      text: "Very weak" },
+      { width: "40%",  color: "var(--red)",      text: "Weak" },
+      { width: "60%",  color: "var(--accent)",   text: "Fair" },
+      { width: "80%",  color: "var(--accent2)",  text: "Strong" },
+      { width: "100%", color: "var(--green)",    text: "Very strong ✓" },
+    ];
+
+    const level = pw.length === 0 ? levels[0] : levels[Math.min(score, 5)];
+    fill.style.width      = level.width;
+    fill.style.background = level.color;
+    label.textContent     = level.text;
+    label.style.color     = level.color;
+  }
+
+
+  // ── Eye Icon Toggle ───────────────────────────────────────
+  function togglePw(inputId, btn) {
+    const input   = document.getElementById(inputId);
+    const isHidden = input.type === "password";
+    input.type    = isHidden ? "text" : "password";
+    btn.innerHTML = isHidden
+      ? `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:18px;height:18px">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.477 0-8.268-2.943-9.542-7a9.956 9.956 0 012.223-3.592M6.53 6.533A9.956 9.956 0 0112 5c4.477 0 8.268 2.943 9.542 7a9.978 9.978 0 01-4.072 5.293M15 12a3 3 0 11-4.243-4.243M3 3l18 18"/>
+        </svg>`
+      : `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:18px;height:18px">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+        </svg>`;
+  }
+
+
+  // ── Toast ─────────────────────────────────────────────────
+  function showToast(msg, type = "success") {
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    t.className   = `toast ${type} show`;
+    setTimeout(() => { t.className = "toast"; }, 3000);
+  }
+
+
+  // ── Logout ────────────────────────────────────────────────
+  async function logout() {
+    await fetch("/api/logout", { method: "POST" });
+    window.location.href = "/login";
+  }
+
+
+  // Load grades on page open
+  loadMyGrades();
+</script>
+</body>
+</html>

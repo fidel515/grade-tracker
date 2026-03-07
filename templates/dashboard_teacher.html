@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>GradeVault — Teacher Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="/static/css/style.css"/>
+  <style>
+    .top-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:2rem}
+    .welcome{font-size:1.5rem;font-weight:800;letter-spacing:-0.03em}
+    .welcome span{color:var(--accent)}
+    .role-badge{background:rgba(79,142,247,0.15);border:1px solid rgba(79,142,247,0.3);color:var(--accent2);border-radius:20px;padding:4px 14px;font-size:0.75rem;font-family:var(--font-mono);font-weight:600}
+    .logout-btn{background:none;border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:8px 16px;font-family:var(--font-display);font-size:0.82rem;cursor:pointer;transition:all 0.2s}
+    .logout-btn:hover{border-color:var(--red);color:var(--red)}
+    .tabs{display:flex;gap:4px;background:var(--surface);border:1px solid var(--border);padding:4px;border-radius:10px;margin-bottom:2rem;width:fit-content}
+    .tab{background:none;border:none;color:var(--muted);font-family:var(--font-display);font-size:0.85rem;font-weight:600;padding:6px 18px;border-radius:7px;cursor:pointer;transition:all 0.2s}
+    .tab.active{background:var(--accent);color:#0d0f14}
+    .tab-content{display:none}.tab-content.active{display:block;animation:fadeUp 0.3s ease}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+    .subject-tag{background:rgba(79,142,247,0.15);border:1px solid rgba(79,142,247,0.3);color:var(--accent2);border-radius:20px;padding:4px 14px;font-size:0.8rem;font-family:var(--font-mono)}
+  </style>
+</head>
+<body>
+<main style="max-width:1100px;margin:0 auto;padding:2.5rem 2rem">
+
+  <div class="top-bar">
+    <div style="display:flex;align-items:center;gap:12px">
+      <span style="color:var(--accent);font-size:1.6rem">◈</span>
+      <div>
+        <div class="welcome">Welcome, <span>{{ user.fullname }}</span></div>
+        <div style="color:var(--muted);font-size:0.8rem;font-family:var(--font-mono)">Teacher Dashboard</div>
+      </div>
+      <span class="role-badge">👨‍🏫 Teacher</span>
+      <span class="subject-tag">{{ user.subject }}</span>
+    </div>
+    <button class="logout-btn" onclick="logout()">Sign Out</button>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="overview">Overview</button>
+    <button class="tab" data-tab="students">Students</button>
+    <button class="tab" data-tab="grades">Add Grade</button>
+  </div>
+
+  <!-- OVERVIEW -->
+  <div id="tab-overview" class="tab-content active">
+    <div class="page-title"><h1>My Class</h1><p>Performance overview for your subject</p></div>
+    <div class="stats-grid">
+      <div class="stat-card"><span class="stat-label">My Students</span><span class="stat-value" id="val-total">—</span></div>
+      <div class="stat-card accent"><span class="stat-label">Class Average</span><span class="stat-value" id="val-avg">—</span></div>
+      <div class="stat-card green"><span class="stat-label">Passing</span><span class="stat-value" id="val-pass">—</span></div>
+      <div class="stat-card red"><span class="stat-label">Failing</span><span class="stat-value" id="val-fail">—</span></div>
+    </div>
+    <div class="section-heading"><h2>Student Cards</h2><span class="badge" id="student-count-badge">0</span></div>
+    <div id="student-cards" class="student-grid">
+      <div class="empty-state">No students yet. Add students and grades first.</div>
+    </div>
+  </div>
+
+  <!-- STUDENTS -->
+  <div id="tab-students" class="tab-content">
+    <div class="page-title"><h1>Students</h1><p>Manage your class roster</p></div>
+    <div class="form-card">
+      <h2>Add New Student</h2>
+      <div class="form-row">
+        <div class="form-group"><label>Full Name</label><input type="text" id="student-name" placeholder="e.g. Jane Mwangi"/></div>
+        <div class="form-group"><label>Email Address</label><input type="email" id="student-email" placeholder="e.g. jane@school.ac.ke"/></div>
+        <button class="btn-primary" id="add-student-btn">Add Student</button>
+      </div>
+      <div id="student-msg" class="msg"></div>
+    </div>
+    <div class="section-heading"><h2>Roster</h2></div>
+    <div class="table-wrap">
+      <table><thead><tr><th>#</th><th>Name</th><th>Email</th><th>Avg Grade</th><th>Status</th><th>Action</th></tr></thead>
+      <tbody id="students-tbody"><tr><td colspan="6" class="empty-row">No students yet.</td></tr></tbody></table>
+    </div>
+  </div>
+
+  <!-- ADD GRADE -->
+  <div id="tab-grades" class="tab-content">
+    <div class="page-title"><h1>Add Grade</h1><p>Record a grade for a student</p></div>
+    <div class="form-card wide">
+      <h2>Grade Entry</h2>
+      <div class="form-row vertical">
+        <div class="form-group"><label>Select Student</label>
+          <select id="grade-student"><option value="">— Choose a student —</option></select>
+        </div>
+        <div class="form-group"><label>Subject</label>
+          <input type="text" id="grade-subject" placeholder="Subject" readonly/>
+        </div>
+        <div class="form-row half">
+          <div class="form-group"><label>Grade Scored</label><input type="number" id="grade-value" placeholder="e.g. 78" min="0"/></div>
+          <div class="form-group"><label>Out of (Max)</label><input type="number" id="grade-max" placeholder="100" value="100" min="1"/></div>
+        </div>
+        <button class="btn-primary" id="add-grade-btn">Save Grade</button>
+      </div>
+      <div id="grade-msg" class="msg"></div>
+    </div>
+    <div class="section-heading"><h2>Grade Records</h2></div>
+    <div id="grade-records" class="grade-records-list">
+      <div class="empty-state">No grade records yet.</div>
+    </div>
+  </div>
+
+</main>
+<div id="toast" class="toast"></div>
+<script>
+  const SUBJECT = "{{ user.subject }}"; // teacher's assigned subject
+
+  document.querySelectorAll(".tab").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".tab").forEach(b => b.classList.remove("active"));
+      document.querySelectorAll(".tab-content").forEach(s => s.classList.remove("active"));
+      btn.classList.add("active");
+      document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
+      if (btn.dataset.tab === "overview") loadOverview();
+      if (btn.dataset.tab === "students") loadStudentsTab();
+      if (btn.dataset.tab === "grades")   loadGradesTab();
+    });
+  });
+
+  async function api(method, path, body=null) {
+    const opts = { method, headers: {"Content-Type":"application/json"} };
+    if (body) opts.body = JSON.stringify(body);
+    const res = await fetch(path, opts);
+    return res.json();
+  }
+
+  function showToast(msg, type="success") {
+    const t = document.getElementById("toast");
+    t.textContent = msg; t.className = "toast " + type + " show";
+    setTimeout(() => { t.className = "toast"; }, 3000);
+  }
+
+  function escHtml(str) {
+    return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  }
+
+  async function loadOverview() {
+    const [stats, students] = await Promise.all([api("GET","/api/stats"), api("GET","/api/students")]);
+    document.getElementById("val-total").textContent = stats.total_students || 0;
+    document.getElementById("val-avg").textContent   = stats.overall_average ? stats.overall_average+"%" : "—";
+    document.getElementById("val-pass").textContent  = stats.passing_students || 0;
+    document.getElementById("val-fail").textContent  = stats.failing_students || 0;
+    document.getElementById("student-count-badge").textContent = students.length;
+    const grid = document.getElementById("student-cards");
+    if (!students.length) { grid.innerHTML = '<div class="empty-state">No students yet.</div>'; return; }
+    grid.innerHTML = students.map(s => {
+      const avg = s.average; const pct = avg !== null ? Math.min(avg,100) : 0;
+      const fillClass = pct>=70?"good":pct>=50?"mid":"bad";
+      const statusClass = s.status==="Pass"?"pass":s.status==="Fail"?"fail":"none";
+      return `<div class="student-card">
+        <div class="sc-header"><div><div class="sc-name">${escHtml(s.name)}</div><div class="sc-email">${escHtml(s.email)}</div></div>
+        <span class="status-pill ${statusClass}">${s.status}</span></div>
+        <div style="display:flex;align-items:baseline;gap:8px">
+          <span class="sc-avg" style="color:${pct>=50?'var(--green)':'var(--red)'}">${avg!==null?avg+"%":"—"}</span>
+          <span style="font-size:0.72rem;color:var(--muted);font-family:var(--font-mono)">${s.grades.length} grade(s)</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill ${fillClass}" style="width:${pct}%"></div></div>
+      </div>`;
+    }).join("");
+  }
+
+  async function loadStudentsTab() {
+    const students = await api("GET", "/api/students");
+    const tbody = document.getElementById("students-tbody");
+    if (!students.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty-row">No students yet.</td></tr>'; return; }
+    tbody.innerHTML = students.map((s,i) => `<tr>
+      <td style="color:var(--muted);font-family:var(--font-mono)">${i+1}</td>
+      <td style="font-weight:600">${escHtml(s.name)}</td>
+      <td style="font-family:var(--font-mono);font-size:0.8rem;color:var(--muted)">${escHtml(s.email)}</td>
+      <td style="font-family:var(--font-mono)">${s.average!==null?'<span style="color:'+(s.average>=50?'var(--green)':'var(--red)')+'">'+s.average+'%</span>':'<span style="color:var(--muted)">—</span>'}</td>
+      <td><span class="status-pill ${s.status==='Pass'?'pass':s.status==='Fail'?'fail':'none'}">${s.status}</span></td>
+      <td><button class="btn-danger" onclick="deleteStudent(${s.id})">Delete</button></td>
+    </tr>`).join("");
+  }
+
+  async function loadGradesTab() {
+    const students = await api("GET", "/api/students");
+    const sel = document.getElementById("grade-student");
+    sel.innerHTML = '<option value="">— Choose a student —</option>';
+    students.forEach(s => { const o = document.createElement("option"); o.value=s.id; o.textContent=s.name; sel.appendChild(o); });
+    document.getElementById("grade-subject").value = SUBJECT;
+    renderGradeRecords(students);
+  }
+
+  function renderGradeRecords(students) {
+    const c = document.getElementById("grade-records");
+    if (!students.length || students.every(s=>!s.grades.length)) { c.innerHTML='<div class="empty-state">No grade records yet.</div>'; return; }
+    c.innerHTML = students.filter(s=>s.grades.length).map(s => `
+      <div class="grade-record-card">
+        <div class="grc-header"><div class="grc-name">${escHtml(s.name)}</div>
+        <span class="status-pill ${s.status==='Pass'?'pass':s.status==='Fail'?'fail':'none'}">${s.status} ${s.average!==null?"· "+s.average+"%":""}</span></div>
+        <table class="grc-table"><thead><tr><th>Subject</th><th>Score</th><th>Percentage</th><th>Action</th></tr></thead><tbody>
+        ${s.grades.map(g => { const pct=Math.round((g.grade/g.max_grade)*100); return `<tr>
+          <td style="font-weight:600">${escHtml(g.subject)}</td>
+          <td style="font-family:var(--font-mono)">${g.grade}/${g.max_grade}</td>
+          <td style="font-family:var(--font-mono);color:${pct>=50?'var(--green)':'var(--red)'}">${pct}%</td>
+          <td><button class="btn-danger" onclick="deleteGrade(${g.id})">Remove</button></td>
+        </tr>`; }).join("")}
+        </tbody></table>
+      </div>`).join("");
+  }
+
+  document.getElementById("add-student-btn").addEventListener("click", async () => {
+    const name=document.getElementById("student-name").value.trim();
+    const email=document.getElementById("student-email").value.trim();
+    const msg=document.getElementById("student-msg");
+    if (!name||!email){msg.textContent="Please fill in both fields.";msg.className="msg error";return;}
+    const res=await api("POST","/api/students",{name,email});
+    if(res.error){msg.textContent=res.error;msg.className="msg error";}
+    else{msg.textContent="✓ "+name+" added!";msg.className="msg success";showToast(name+" added!");loadStudentsTab();}
+  });
+
+  document.getElementById("add-grade-btn").addEventListener("click", async () => {
+    const student_id=document.getElementById("grade-student").value;
+    const subject=document.getElementById("grade-subject").value.trim();
+    const grade=document.getElementById("grade-value").value;
+    const max_grade=document.getElementById("grade-max").value||100;
+    const msg=document.getElementById("grade-msg");
+    if(!student_id||!subject||grade===""){msg.textContent="Please fill in all fields.";msg.className="msg error";return;}
+    const res=await api("POST","/api/grades",{student_id:parseInt(student_id),subject,grade:parseFloat(grade),max_grade:parseFloat(max_grade)});
+    if(res.error){msg.textContent=res.error;msg.className="msg error";}
+    else{msg.textContent="✓ Grade saved!";msg.className="msg success";document.getElementById("grade-value").value="";document.getElementById("grade-max").value="100";showToast("Grade saved!");loadGradesTab();loadOverview();}
+  });
+
+  async function deleteStudent(id){if(!confirm("Delete this student?"))return;await api("DELETE","/api/students/"+id);showToast("Student deleted","error");loadStudentsTab();loadOverview();}
+  async function deleteGrade(id){await api("DELETE","/api/grades/"+id);showToast("Grade removed","error");loadGradesTab();loadOverview();}
+  async function logout(){await api("POST","/api/logout");window.location.href="/login";}
+
+  loadOverview();
+</script>
+</body>
+</html>
