@@ -6,47 +6,70 @@
   <title>GradeVault — Admin Dashboard</title>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="/static/css/style.css"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
-    .top-bar { display:flex; align-items:center; justify-content:space-between; margin-bottom:2rem; }
-    .welcome { font-size:1.5rem; font-weight:800; letter-spacing:-0.03em; }
-    .welcome span { color:var(--accent); }
-    .role-badge { background:rgba(232,197,71,0.15); border:1px solid rgba(232,197,71,0.3); color:var(--accent); border-radius:20px; padding:4px 14px; font-size:0.75rem; font-family:var(--font-mono); font-weight:600; }
-    .logout-btn { background:none; border:1px solid var(--border); color:var(--muted); border-radius:8px; padding:8px 16px; font-family:var(--font-display); font-size:0.82rem; cursor:pointer; transition:all 0.2s; }
-    .logout-btn:hover { border-color:var(--red); color:var(--red); }
-    .tabs { display:flex; gap:4px; background:var(--surface); border:1px solid var(--border); padding:4px; border-radius:10px; margin-bottom:2rem; width:fit-content; }
-    .tab { background:none; border:none; color:var(--muted); font-family:var(--font-display); font-size:0.85rem; font-weight:600; padding:6px 18px; border-radius:7px; cursor:pointer; transition:all 0.2s; }
-    .tab.active { background:var(--accent); color:#0d0f14; }
-    .tab-content { display:none; } .tab-content.active { display:block; animation:fadeUp 0.3s ease; }
-    @keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
-    .change-pw-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:2rem; max-width:460px; }
-    .change-pw-card h2 { font-size:1rem; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; color:var(--muted); margin-bottom:1.5rem; }
-    .pw-group { display:flex; flex-direction:column; gap:6px; margin-bottom:1.2rem; }
-    .pw-group label { font-size:0.75rem; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:var(--muted); font-family:var(--font-mono); }
-    .pw-group .password-wrap input { background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:12px 44px 12px 14px; color:var(--text); font-family:var(--font-display); font-size:0.9rem; outline:none; transition:border-color 0.2s; width:100%; }
-    .pw-group .password-wrap input:focus { border-color:var(--accent); }
+    .top-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:2rem}
+    .welcome{font-size:1.5rem;font-weight:800;letter-spacing:-0.03em}
+    .welcome span{color:var(--accent)}
+    .role-badge{background:rgba(232,197,71,0.15);border:1px solid rgba(232,197,71,0.3);color:var(--accent);border-radius:20px;padding:4px 14px;font-size:0.75rem;font-family:var(--font-mono);font-weight:600}
+    .logout-btn{background:none;border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:8px 16px;font-family:var(--font-display);font-size:0.82rem;cursor:pointer;transition:all 0.2s}
+    .logout-btn:hover{border-color:var(--red);color:var(--red)}
+    .tabs{display:flex;gap:4px;background:var(--surface);border:1px solid var(--border);padding:4px;border-radius:10px;margin-bottom:2rem;width:fit-content;flex-wrap:wrap}
+    .tab{background:none;border:none;color:var(--muted);font-family:var(--font-display);font-size:0.85rem;font-weight:600;padding:6px 18px;border-radius:7px;cursor:pointer;transition:all 0.2s}
+    .tab.active{background:var(--accent);color:#0d0f14}
+    .tab-content{display:none}.tab-content.active{display:block;animation:fadeUp 0.3s ease}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+    .change-pw-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:2rem;max-width:460px}
+    .change-pw-card h2{font-size:1rem;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:var(--muted);margin-bottom:1.5rem}
+    .pw-group{display:flex;flex-direction:column;gap:6px;margin-bottom:1.2rem}
+    .pw-group label{font-size:0.75rem;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);font-family:var(--font-mono)}
+    .pw-group .password-wrap input{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px 44px 12px 14px;color:var(--text);font-family:var(--font-display);font-size:0.9rem;outline:none;transition:border-color 0.2s;width:100%}
+    .pw-group .password-wrap input:focus{border-color:var(--accent)}
+    .search-wrap{display:flex;gap:10px;margin-bottom:1.2rem;align-items:center;flex-wrap:wrap}
+    .search-input{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 16px;color:var(--text);font-family:var(--font-display);font-size:0.9rem;outline:none;transition:border-color 0.2s;width:100%;max-width:340px}
+    .search-input:focus{border-color:var(--accent)}
+    .search-input::placeholder{color:var(--muted)}
+    .btn-pdf{background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);color:var(--green);border-radius:8px;padding:8px 16px;font-family:var(--font-display);font-size:0.82rem;font-weight:600;cursor:pointer;transition:all 0.2s}
+    .btn-pdf:hover{background:rgba(34,197,94,0.2)}
+    .theme-btn{background:none;border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:8px 12px;cursor:pointer;font-size:1rem;transition:all 0.2s}
+    .theme-btn:hover{border-color:var(--accent);color:var(--accent)}
+    .chart-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem;margin-bottom:1.5rem}
+    .chart-wrap h3{font-size:0.85rem;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:var(--muted);margin-bottom:1rem}
+    .chart-container{position:relative;height:280px}
+    @media(max-width:600px){
+      .top-bar{flex-direction:column;align-items:flex-start;gap:12px}
+      .form-row{flex-direction:column}
+      .stats-grid{grid-template-columns:1fr 1fr}
+      main{padding:1.2rem 1rem!important}
+      .chart-grid{grid-template-columns:1fr!important}
+    }
   </style>
 </head>
 <body>
 <main style="max-width:1100px;margin:0 auto;padding:2.5rem 2rem">
 
-  <!-- Top bar -->
   <div class="top-bar">
-    <div style="display:flex;align-items:center;gap:12px">
-      <span class="logo-icon" style="color:var(--accent);font-size:1.6rem">◈</span>
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <span style="color:var(--accent);font-size:1.6rem">◈</span>
       <div>
         <div class="welcome">Welcome, <span>{{ user.fullname }}</span></div>
         <div style="color:var(--muted);font-size:0.8rem;font-family:var(--font-mono)">Admin Dashboard</div>
       </div>
       <span class="role-badge">👨‍💼 Admin</span>
     </div>
-    <button class="logout-btn" onclick="logout()">Sign Out</button>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="theme-btn" id="theme-toggle" title="Toggle dark/light mode">🌙</button>
+      <button class="logout-btn" onclick="logout()">Sign Out</button>
+    </div>
   </div>
 
-  <!-- Tabs -->
   <div class="tabs">
     <button class="tab active" data-tab="overview">Overview</button>
     <button class="tab" data-tab="teachers">Teachers</button>
     <button class="tab" data-tab="students">Students</button>
+    <button class="tab" data-tab="charts">Charts</button>
+    <button class="tab" data-tab="report">School Report</button>
     <button class="tab" data-tab="password">Change Password</button>
   </div>
 
@@ -57,7 +80,7 @@
       <div class="stat-card"><span class="stat-label">Total Students</span><span class="stat-value" id="val-students">—</span></div>
       <div class="stat-card accent"><span class="stat-label">Total Teachers</span><span class="stat-value" id="val-teachers">—</span></div>
       <div class="stat-card green"><span class="stat-label">Total Grades</span><span class="stat-value" id="val-grades">—</span></div>
-      <div class="stat-card"><span class="stat-label">Class Average</span><span class="stat-value" id="val-avg">—</span></div>
+      <div class="stat-card"><span class="stat-label">School Average</span><span class="stat-value" id="val-avg">—</span></div>
     </div>
   </div>
 
@@ -75,11 +98,8 @@
         <div class="form-group"><label>Password</label>
           <div class="password-wrap">
             <input type="password" id="t-password" placeholder="Set a password"/>
-            <button type="button" class="eye-btn" onclick="togglePassword('t-password', this)" title="Show/hide password">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:18px;height:18px">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-              </svg>
+            <button type="button" class="eye-btn" onclick="togglePassword('t-password',this)">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:18px;height:18px"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
             </button>
           </div>
         </div>
@@ -87,6 +107,9 @@
         <button class="btn-primary" onclick="addTeacher()">Add Teacher</button>
       </div>
       <div id="teacher-msg" class="msg"></div>
+    </div>
+    <div class="search-wrap" style="margin-top:1.5rem">
+      <input class="search-input" id="teacher-search" type="text" placeholder="🔍 Search by name, username or subject..." oninput="searchTeachers(this.value)"/>
     </div>
     <div class="section-heading"><h2>All Teachers</h2></div>
     <div class="table-wrap">
@@ -99,13 +122,45 @@
 
   <!-- STUDENTS TAB -->
   <div id="tab-students" class="tab-content">
-    <div class="page-title"><h1>All Students</h1><p>View all students in the system</p></div>
+    <div class="page-title"><h1>All Students</h1><p>View and manage all students</p></div>
+    <div class="search-wrap">
+      <input class="search-input" id="student-search" type="text" placeholder="🔍 Search by name or email..." oninput="searchStudents(this.value)"/>
+      <button class="btn-pdf" onclick="exportStudentsPDF()">📄 Export PDF</button>
+    </div>
     <div class="table-wrap">
       <table>
         <thead><tr><th>#</th><th>Name</th><th>Email</th><th>Average</th><th>Status</th><th>Reset PW</th></tr></thead>
         <tbody id="students-tbody"><tr><td colspan="6" class="empty-row">No students yet.</td></tr></tbody>
       </table>
     </div>
+  </div>
+
+  <!-- CHARTS TAB -->
+  <div id="tab-charts" class="tab-content">
+    <div class="page-title"><h1>School Charts</h1><p>Visual overview of school performance</p></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.5rem" class="chart-grid">
+      <div class="chart-wrap">
+        <h3>Pass / Fail Breakdown</h3>
+        <div class="chart-container"><canvas id="chart-passfail"></canvas></div>
+      </div>
+      <div class="chart-wrap">
+        <h3>Grade Distribution</h3>
+        <div class="chart-container"><canvas id="chart-distribution"></canvas></div>
+      </div>
+    </div>
+    <div class="chart-wrap">
+      <h3>Top 15 Students by Average</h3>
+      <div class="chart-container" style="height:320px"><canvas id="chart-top"></canvas></div>
+    </div>
+  </div>
+
+  <!-- SCHOOL REPORT TAB -->
+  <div id="tab-report" class="tab-content">
+    <div class="page-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem">
+      <div><h1>School Report</h1><p>Full report of all students and performance</p></div>
+      <button class="btn-pdf" onclick="exportSchoolPDF()">📄 Download PDF</button>
+    </div>
+    <div id="report-container"><div class="empty-state">Loading report...</div></div>
   </div>
 
   <!-- CHANGE PASSWORD TAB -->
@@ -117,11 +172,8 @@
         <label>Current Password</label>
         <div class="password-wrap">
           <input type="password" id="current-pw" placeholder="Enter your current password"/>
-          <button type="button" class="eye-btn" onclick="togglePw('current-pw', this)">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:18px;height:18px">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-            </svg>
+          <button type="button" class="eye-btn" onclick="togglePw('current-pw',this)">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:18px;height:18px"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
           </button>
         </div>
       </div>
@@ -129,11 +181,8 @@
         <label>New Password</label>
         <div class="password-wrap">
           <input type="password" id="new-pw" placeholder="Enter a new password"/>
-          <button type="button" class="eye-btn" onclick="togglePw('new-pw', this)">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:18px;height:18px">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-            </svg>
+          <button type="button" class="eye-btn" onclick="togglePw('new-pw',this)">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:18px;height:18px"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
           </button>
         </div>
       </div>
@@ -141,11 +190,8 @@
         <label>Confirm New Password</label>
         <div class="password-wrap">
           <input type="password" id="confirm-pw" placeholder="Repeat your new password"/>
-          <button type="button" class="eye-btn" onclick="togglePw('confirm-pw', this)">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:18px;height:18px">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-            </svg>
+          <button type="button" class="eye-btn" onclick="togglePw('confirm-pw',this)">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:18px;height:18px"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
           </button>
         </div>
       </div>
@@ -157,17 +203,29 @@
 </main>
 <div id="toast" class="toast"></div>
 <script>
+  let allTeachers = [], allStudents = [];
+  let passfailChart = null, distributionChart = null, topChart = null;
+
+  // ── Dark/Light mode ──
+  const themeBtn = document.getElementById("theme-toggle");
+  const savedTheme = localStorage.getItem("gv-theme") || "dark";
+  if (savedTheme === "light") { document.body.classList.add("light"); themeBtn.textContent = "☀️"; }
+  themeBtn.addEventListener("click", () => {
+    document.body.classList.toggle("light");
+    const isLight = document.body.classList.contains("light");
+    themeBtn.textContent = isLight ? "☀️" : "🌙";
+    localStorage.setItem("gv-theme", isLight ? "light" : "dark");
+  });
 
   // ── Eye icon toggles ──
-  function togglePassword(inputId, btn) {
-    const input = document.getElementById(inputId);
-    const isHidden = input.type === "password";
+  function togglePassword(inputId, btn) { togglePw(inputId, btn); }
+  function togglePw(inputId, btn) {
+    const input = document.getElementById(inputId), isHidden = input.type === "password";
     input.type = isHidden ? "text" : "password";
     btn.innerHTML = isHidden
       ? `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:18px;height:18px"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.477 0-8.268-2.943-9.542-7a9.956 9.956 0 012.223-3.592M6.53 6.533A9.956 9.956 0 0112 5c4.477 0 8.268 2.943 9.542 7a9.978 9.978 0 01-4.072 5.293M15 12a3 3 0 11-4.243-4.243M3 3l18 18"/></svg>`
       : `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:18px;height:18px"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>`;
   }
-  function togglePw(inputId, btn) { togglePassword(inputId, btn); }
 
   // ── Tab switching ──
   document.querySelectorAll(".tab").forEach(btn => {
@@ -179,6 +237,8 @@
       if (btn.dataset.tab === "overview")  loadOverview();
       if (btn.dataset.tab === "teachers")  loadTeachers();
       if (btn.dataset.tab === "students")  loadStudents();
+      if (btn.dataset.tab === "charts")    loadCharts();
+      if (btn.dataset.tab === "report")    loadSchoolReport();
     });
   });
 
@@ -199,7 +259,7 @@
     return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
   }
 
-  // ── Load overview stats ──
+  // ── Overview ──
   async function loadOverview() {
     const stats = await api("GET", "/api/admin/stats");
     document.getElementById("val-students").textContent = stats.total_students || 0;
@@ -208,11 +268,15 @@
     document.getElementById("val-avg").textContent      = stats.overall_average ? stats.overall_average + "%" : "—";
   }
 
-  // ── Load teachers with Delete and Reset PW buttons ──
+  // ── Teachers ──
   async function loadTeachers() {
-    const teachers = await api("GET", "/api/admin/teachers");
+    allTeachers = await api("GET", "/api/admin/teachers");
+    renderTeachersTable(allTeachers);
+  }
+
+  function renderTeachersTable(teachers) {
     const tbody = document.getElementById("teachers-tbody");
-    if (!teachers.length) { tbody.innerHTML = '<tr><td colspan="7" class="empty-row">No teachers yet.</td></tr>'; return; }
+    if (!teachers.length) { tbody.innerHTML = '<tr><td colspan="7" class="empty-row">No teachers found.</td></tr>'; return; }
     tbody.innerHTML = teachers.map((t, i) => `
       <tr>
         <td style="color:var(--muted);font-family:var(--font-mono)">${i+1}</td>
@@ -221,15 +285,30 @@
         <td style="font-family:var(--font-mono);font-size:0.8rem;color:var(--muted)">${escHtml(t.email)}</td>
         <td><span class="subject-chip">${escHtml(t.subject||'—')}</span></td>
         <td><button class="btn-danger" onclick="deleteTeacher(${t.id})">Delete</button></td>
-        <td><button class="btn-primary" onclick="resetPassword(${t.id}, '${escHtml(t.username)}')">Reset PW</button></td>
+        <td><button class="btn-primary" onclick="resetPassword(${t.id},'${escHtml(t.username)}')">Reset PW</button></td>
       </tr>`).join("");
   }
 
-  // ── Load students with Reset PW button ──
+  // ── Search teachers ──
+  let teacherSearchTimeout = null;
+  function searchTeachers(query) {
+    clearTimeout(teacherSearchTimeout);
+    if (!query.trim()) { renderTeachersTable(allTeachers); return; }
+    teacherSearchTimeout = setTimeout(async () => {
+      const results = await api("GET", "/api/teachers/search?q=" + encodeURIComponent(query));
+      renderTeachersTable(results);
+    }, 300);
+  }
+
+  // ── Students ──
   async function loadStudents() {
-    const students = await api("GET", "/api/students");
+    allStudents = await api("GET", "/api/students");
+    renderStudentsTable(allStudents);
+  }
+
+  function renderStudentsTable(students) {
     const tbody = document.getElementById("students-tbody");
-    if (!students.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty-row">No students yet.</td></tr>'; return; }
+    if (!students.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty-row">No students found.</td></tr>'; return; }
     tbody.innerHTML = students.map((s, i) => `
       <tr>
         <td style="color:var(--muted);font-family:var(--font-mono)">${i+1}</td>
@@ -237,8 +316,180 @@
         <td style="font-family:var(--font-mono);font-size:0.8rem;color:var(--muted)">${escHtml(s.email)}</td>
         <td style="font-family:var(--font-mono)">${s.average !== null ? '<span style="color:'+(s.average>=50?'var(--green)':'var(--red)')+'">'+s.average+'%</span>' : '<span style="color:var(--muted)">—</span>'}</td>
         <td><span class="status-pill ${s.status==='Pass'?'pass':s.status==='Fail'?'fail':'none'}">${s.status}</span></td>
-        <td><button class="btn-primary" onclick="resetStudentPassword('${escHtml(s.email)}', '${escHtml(s.name)}')">Reset PW</button></td>
+        <td><button class="btn-primary" onclick="resetStudentPassword('${escHtml(s.email)}','${escHtml(s.name)}')">Reset PW</button></td>
       </tr>`).join("");
+  }
+
+  // ── Search students ──
+  let studentSearchTimeout = null;
+  function searchStudents(query) {
+    clearTimeout(studentSearchTimeout);
+    if (!query.trim()) { renderStudentsTable(allStudents); return; }
+    studentSearchTimeout = setTimeout(async () => {
+      const results = await api("GET", "/api/students/search?q=" + encodeURIComponent(query));
+      renderStudentsTable(results);
+    }, 300);
+  }
+
+  // ── Export Students PDF ──
+  async function exportStudentsPDF() {
+    const students = allStudents.length ? allStudents : await api("GET", "/api/students");
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    const now = new Date().toLocaleDateString();
+    doc.setFontSize(18); doc.setFont("helvetica","bold");
+    doc.text("GradeVault — All Students Report", 14, 20);
+    doc.setFontSize(10); doc.setFont("helvetica","normal"); doc.setTextColor(150);
+    doc.text("Generated: "+now+"   |   Total: "+students.length+" students", 14, 28);
+    doc.setTextColor(0);
+    let y = 40;
+    doc.setFont("helvetica","bold");
+    doc.text("#",14,y); doc.text("Name",24,y); doc.text("Email",90,y); doc.text("Average",155,y); doc.text("Status",178,y);
+    doc.setDrawColor(200); doc.line(14,y+2,196,y+2); y+=8;
+    doc.setFont("helvetica","normal");
+    students.forEach((s,i) => {
+      if(y>270){doc.addPage();y=20;}
+      doc.text(String(i+1),14,y);
+      doc.text(s.name.substring(0,28),24,y);
+      doc.text(s.email.substring(0,34),90,y);
+      doc.text(s.average!==null?s.average+"%":"—",155,y);
+      doc.setTextColor(s.status==="Pass"?[34,197,94]:s.status==="Fail"?[239,68,68]:[150,150,150]);
+      doc.text(s.status,178,y); doc.setTextColor(0); y+=7;
+    });
+    doc.save("all-students-"+now.replace(/\//g,"-")+".pdf");
+    showToast("PDF downloaded!");
+  }
+
+  // ── Charts ──
+  async function loadCharts() {
+    const students = await api("GET", "/api/students");
+    const passing  = students.filter(s=>s.status==="Pass").length;
+    const failing  = students.filter(s=>s.status==="Fail").length;
+    const noGrades = students.filter(s=>s.status==="No Grades").length;
+
+    if (passfailChart) passfailChart.destroy();
+    passfailChart = new Chart(document.getElementById("chart-passfail"), {
+      type:"doughnut",
+      data:{ labels:["Pass","Fail","No Grades"], datasets:[{ data:[passing,failing,noGrades], backgroundColor:["#22c55e","#ef4444","#64748b"], borderWidth:0 }] },
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ labels:{ color:"#94a3b8", font:{ family:"DM Mono" } } } } }
+    });
+
+    const ranges = {"0-49":0,"50-59":0,"60-69":0,"70-79":0,"80-89":0,"90-100":0};
+    students.filter(s=>s.average!==null).forEach(s => {
+      const a = s.average;
+      if(a<50) ranges["0-49"]++; else if(a<60) ranges["50-59"]++; else if(a<70) ranges["60-69"]++;
+      else if(a<80) ranges["70-79"]++; else if(a<90) ranges["80-89"]++; else ranges["90-100"]++;
+    });
+    if (distributionChart) distributionChart.destroy();
+    distributionChart = new Chart(document.getElementById("chart-distribution"), {
+      type:"bar",
+      data:{ labels:Object.keys(ranges), datasets:[{ label:"Students", data:Object.values(ranges), backgroundColor:"rgba(232,197,71,0.7)", borderRadius:6 }] },
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } }, scales:{ x:{ ticks:{ color:"#94a3b8" }, grid:{ color:"rgba(255,255,255,0.05)" } }, y:{ ticks:{ color:"#94a3b8", stepSize:1 }, grid:{ color:"rgba(255,255,255,0.05)" } } } }
+    });
+
+    const top15 = [...students].filter(s=>s.average!==null).sort((a,b)=>b.average-a.average).slice(0,15);
+    if (topChart) topChart.destroy();
+    topChart = new Chart(document.getElementById("chart-top"), {
+      type:"bar",
+      data:{ labels:top15.map(s=>s.name.split(" ")[0]), datasets:[{ label:"Average %", data:top15.map(s=>s.average), backgroundColor:top15.map(s=>s.average>=50?"rgba(34,197,94,0.7)":"rgba(239,68,68,0.7)"), borderRadius:6 }] },
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } }, scales:{ x:{ ticks:{ color:"#94a3b8" }, grid:{ color:"rgba(255,255,255,0.05)" } }, y:{ min:0, max:100, ticks:{ color:"#94a3b8" }, grid:{ color:"rgba(255,255,255,0.05)" } } } }
+    });
+  }
+
+  // ── School Report ──
+  async function loadSchoolReport() {
+    const data = await api("GET", "/api/admin/school-report");
+    const now  = new Date().toLocaleDateString("en-GB", { year:"numeric", month:"long", day:"numeric" });
+    const passRate = data.total_students ? Math.round((data.passing/data.total_students)*100) : 0;
+
+    document.getElementById("report-container").innerHTML = `
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:2rem;max-width:800px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:2rem;flex-wrap:wrap;gap:1rem">
+          <div>
+            <div style="font-size:1.4rem;font-weight:800">◈ GradeVault</div>
+            <div style="color:var(--muted);font-size:0.8rem;font-family:var(--font-mono)">School Performance Report</div>
+          </div>
+          <div style="text-align:right;font-family:var(--font-mono);font-size:0.78rem;color:var(--muted)">
+            <div>Date: ${now}</div>
+            <div>Pass Rate: <span style="color:var(--green);font-weight:700">${passRate}%</span></div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:2rem">
+          <div style="background:var(--surface2);border-radius:8px;padding:1rem;text-align:center">
+            <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);font-family:var(--font-mono)">Students</div>
+            <div style="font-size:1.6rem;font-weight:800">${data.total_students}</div>
+          </div>
+          <div style="background:var(--surface2);border-radius:8px;padding:1rem;text-align:center">
+            <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);font-family:var(--font-mono)">Teachers</div>
+            <div style="font-size:1.6rem;font-weight:800">${data.total_teachers}</div>
+          </div>
+          <div style="background:var(--surface2);border-radius:8px;padding:1rem;text-align:center">
+            <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);font-family:var(--font-mono)">School Avg</div>
+            <div style="font-size:1.6rem;font-weight:800;color:${data.overall_average>=50?'var(--green)':'var(--red)'}">${data.overall_average}%</div>
+          </div>
+          <div style="background:var(--surface2);border-radius:8px;padding:1rem;text-align:center">
+            <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);font-family:var(--font-mono)">Passing</div>
+            <div style="font-size:1.6rem;font-weight:800;color:var(--green)">${data.passing}</div>
+          </div>
+        </div>
+
+        <table style="width:100%;border-collapse:collapse">
+          <thead>
+            <tr style="border-bottom:2px solid var(--border)">
+              <th style="text-align:left;padding:8px 12px;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);font-family:var(--font-mono)">#</th>
+              <th style="text-align:left;padding:8px 12px;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);font-family:var(--font-mono)">Name</th>
+              <th style="text-align:left;padding:8px 12px;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);font-family:var(--font-mono)">Email</th>
+              <th style="text-align:left;padding:8px 12px;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);font-family:var(--font-mono)">Average</th>
+              <th style="text-align:left;padding:8px 12px;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);font-family:var(--font-mono)">Status</th>
+              <th style="text-align:left;padding:8px 12px;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);font-family:var(--font-mono)">Grades</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${data.students.map((s,i) => `
+              <tr style="border-bottom:1px solid var(--border)">
+                <td style="padding:8px 12px;color:var(--muted);font-family:var(--font-mono)">${i+1}</td>
+                <td style="padding:8px 12px;font-weight:600">${escHtml(s.name)}</td>
+                <td style="padding:8px 12px;font-family:var(--font-mono);font-size:0.8rem;color:var(--muted)">${escHtml(s.email)}</td>
+                <td style="padding:8px 12px;font-family:var(--font-mono);color:${s.average!==null?(s.average>=50?'var(--green)':'var(--red)'):'var(--muted)'}">${s.average!==null?s.average+"%":"—"}</td>
+                <td style="padding:8px 12px"><span class="status-pill ${s.status==='Pass'?'pass':s.status==='Fail'?'fail':'none'}">${s.status}</span></td>
+                <td style="padding:8px 12px;font-family:var(--font-mono)">${s.total_grades}</td>
+              </tr>`).join("")}
+          </tbody>
+        </table>
+        <div style="border-top:1px solid var(--border);margin-top:1.5rem;padding-top:1rem;text-align:center;color:var(--muted);font-size:0.75rem;font-family:var(--font-mono)">
+          Generated by GradeVault · grade-tracker-pq0y.onrender.com
+        </div>
+      </div>`;
+  }
+
+  // ── Export School PDF ──
+  async function exportSchoolPDF() {
+    const data = await api("GET", "/api/admin/school-report");
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    const now = new Date().toLocaleDateString();
+    doc.setFontSize(18); doc.setFont("helvetica","bold");
+    doc.text("GradeVault — School Report", 14, 20);
+    doc.setFontSize(10); doc.setFont("helvetica","normal"); doc.setTextColor(150);
+    doc.text("Date: "+now+"  |  Students: "+data.total_students+"  |  School Avg: "+data.overall_average+"%", 14, 28);
+    doc.setTextColor(0);
+    let y = 40;
+    doc.setFont("helvetica","bold");
+    doc.text("#",14,y); doc.text("Name",24,y); doc.text("Email",90,y); doc.text("Average",152,y); doc.text("Status",175,y);
+    doc.setDrawColor(200); doc.line(14,y+2,196,y+2); y+=8;
+    doc.setFont("helvetica","normal");
+    data.students.forEach((s,i) => {
+      if(y>270){doc.addPage();y=20;}
+      doc.text(String(i+1),14,y);
+      doc.text(s.name.substring(0,28),24,y);
+      doc.text(s.email.substring(0,32),90,y);
+      doc.text(s.average!==null?s.average+"%":"—",152,y);
+      doc.setTextColor(s.status==="Pass"?[34,197,94]:s.status==="Fail"?[239,68,68]:[150,150,150]);
+      doc.text(s.status,175,y); doc.setTextColor(0); y+=7;
+    });
+    doc.save("school-report-"+now.replace(/\//g,"-")+".pdf");
+    showToast("School report downloaded!");
   }
 
   // ── Add teacher ──
@@ -246,72 +497,54 @@
     const msg = document.getElementById("teacher-msg");
     const email = document.getElementById("t-email").value.trim();
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      msg.textContent = "Please enter a valid email e.g. teacher@school.ac.ke";
-      msg.className = "msg error"; return;
-    }
+    if (!emailRegex.test(email)) { msg.textContent="Please enter a valid email."; msg.className="msg error"; return; }
     const res = await api("POST", "/api/admin/teachers", {
       fullname: document.getElementById("t-name").value.trim(),
       username: document.getElementById("t-username").value.trim(),
-      email:    email,
-      password: document.getElementById("t-password").value,
+      email, password: document.getElementById("t-password").value,
       subject:  document.getElementById("t-subject").value.trim()
     });
-    if (res.error) { msg.textContent = res.error; msg.className = "msg error"; }
-    else { msg.textContent = "✓ Teacher added!"; msg.className = "msg success"; showToast("Teacher added!"); loadTeachers(); }
+    if (res.error) { msg.textContent=res.error; msg.className="msg error"; }
+    else { msg.textContent="✓ Teacher added!"; msg.className="msg success"; showToast("Teacher added!"); loadTeachers(); loadOverview(); }
   }
 
-  // ── Delete teacher ──
   async function deleteTeacher(id) {
     if (!confirm("Delete this teacher?")) return;
-    await api("DELETE", "/api/admin/teachers/" + id);
-    showToast("Teacher deleted", "error"); loadTeachers();
+    await api("DELETE", "/api/admin/teachers/"+id);
+    showToast("Teacher deleted","error"); loadTeachers(); loadOverview();
   }
 
-  // ── Reset password for teacher (by user ID) ──
   async function resetPassword(userId, username) {
-    if (!confirm("Reset password for " + username + "?\nNew password will be: " + username)) return;
-    const res = await fetch("/api/admin/users/" + userId + "/reset-password", { method: "POST" });
+    if (!confirm("Reset password for "+username+"?\nNew password will be: "+username)) return;
+    const res = await fetch("/api/admin/users/"+userId+"/reset-password",{method:"POST"});
     const data = await res.json();
-    if (data.error) { showToast(data.error, "error"); }
-    else { showToast("Password reset! New password: " + data.new_password); }
+    if (data.error) showToast(data.error,"error");
+    else showToast("Password reset! New password: "+data.new_password);
   }
 
-  // ── Reset password for student (by email) ──
   async function resetStudentPassword(email, name) {
     const username = email.split("@")[0];
-    if (!confirm("Reset password for " + name + "?\nNew password will be: " + username)) return;
-    const res = await fetch("/api/admin/reset-student-password", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: email })
-    });
+    if (!confirm("Reset password for "+name+"?\nNew password will be: "+username)) return;
+    const res = await fetch("/api/admin/reset-student-password",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email})});
     const data = await res.json();
-    if (data.error) { showToast(data.error, "error"); }
-    else { showToast("Password reset! New password: " + data.new_password); }
+    if (data.error) showToast(data.error,"error");
+    else showToast("Password reset! New password: "+data.new_password);
   }
 
-  // ── Change admin password ──
   async function changePassword() {
-    const currentPw = document.getElementById("current-pw").value;
-    const newPw     = document.getElementById("new-pw").value;
-    const confirmPw = document.getElementById("confirm-pw").value;
-    const msg       = document.getElementById("pw-msg");
-    msg.textContent = ""; msg.className = "msg";
-    if (!currentPw || !newPw || !confirmPw) { msg.textContent = "Please fill in all fields."; msg.className = "msg error"; return; }
-    if (newPw !== confirmPw) { msg.textContent = "New passwords do not match."; msg.className = "msg error"; return; }
-    if (newPw.length < 6) { msg.textContent = "Password must be at least 6 characters."; msg.className = "msg error"; return; }
-    if (currentPw === newPw) { msg.textContent = "New password must be different from current."; msg.className = "msg error"; return; }
-    const res  = await fetch("/api/change-password", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ current_password: currentPw, new_password: newPw }) });
-    const data = await res.json();
-    if (data.error) { msg.textContent = data.error; msg.className = "msg error"; }
-    else { msg.textContent = "✓ Password updated successfully!"; msg.className = "msg success"; document.getElementById("current-pw").value = ""; document.getElementById("new-pw").value = ""; document.getElementById("confirm-pw").value = ""; showToast("Password updated!"); }
+    const currentPw=document.getElementById("current-pw").value, newPw=document.getElementById("new-pw").value, confirmPw=document.getElementById("confirm-pw").value;
+    const msg=document.getElementById("pw-msg"); msg.textContent=""; msg.className="msg";
+    if(!currentPw||!newPw||!confirmPw){msg.textContent="Please fill in all fields.";msg.className="msg error";return;}
+    if(newPw!==confirmPw){msg.textContent="New passwords do not match.";msg.className="msg error";return;}
+    if(newPw.length<6){msg.textContent="Password must be at least 6 characters.";msg.className="msg error";return;}
+    if(currentPw===newPw){msg.textContent="New password must be different.";msg.className="msg error";return;}
+    const res=await fetch("/api/change-password",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({current_password:currentPw,new_password:newPw})});
+    const data=await res.json();
+    if(data.error){msg.textContent=data.error;msg.className="msg error";}
+    else{msg.textContent="✓ Password updated!";msg.className="msg success";document.getElementById("current-pw").value="";document.getElementById("new-pw").value="";document.getElementById("confirm-pw").value="";showToast("Password updated!");}
   }
 
-  async function logout() {
-    await api("POST", "/api/logout");
-    window.location.href = "/login";
-  }
+  async function logout() { await api("POST","/api/logout"); window.location.href="/login"; }
 
   loadOverview();
 </script>
