@@ -663,18 +663,7 @@ def my_grades():
 # ============================================================
 # START
 # ============================================================
-@app.route("/reset-admin")
-def reset_admin():
-    conn = get_db()
-    conn.execute("DELETE FROM users WHERE username = 'admin'")
-    conn.execute("""
-        INSERT INTO users (fullname, username, email, password, role)
-        VALUES (?, ?, ?, ?, ?)
-    """, ("Administrator", "admin", "admin@gradevault.com",
-          generate_password_hash("admin123"), "admin"))
-    conn.commit()
-    conn.close()
-    return "Admin reset! Login with admin / admin123"
+
     
 if __name__ == "__main__":
     init_db()
