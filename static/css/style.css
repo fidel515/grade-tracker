@@ -535,6 +535,35 @@ tbody tr:hover { background: var(--surface2); }
   .tabs .tab { padding: 6px 12px; font-size: 0.78rem; }
 }
 
+/* ── Light Mode ── */
+body.light {
+  --bg: #f4f5f7;
+  --surface: #ffffff;
+  --surface2: #f0f1f4;
+  --border: #e0e2ea;
+  --text: #0d0f14;
+  --muted: #6b7294;
+  background-image: none;
+}
+body.light header { background: rgba(244,245,247,0.9); }
+body.light .form-group input,
+body.light .form-group select,
+body.light .search-input,
+body.light .modal-input,
+body.light .pw-group .password-wrap input { background: #f0f1f4; color: #0d0f14; }
+body.light tbody tr:hover { background: #f0f1f4; }
+body.light .toast { background: #ffffff; }
+body.light .empty-state { background: #ffffff; }
+body.light .chart-wrap { background: #ffffff; }
+body.light .change-pw-card { background: #ffffff; }
+body.light .grade-record-card { background: #ffffff; }
+body.light .student-card { background: #ffffff; }
+body.light table { background: #ffffff; }
+body.light .table-wrap { background: #ffffff; }
+body.light .form-card { background: #ffffff; }
+body.light .modal { background: #ffffff; }
+body.light .subject-card { background: #ffffff; }
+
 /* ── Password Eye Toggle ── */
 .password-wrap {
   position: relative;
