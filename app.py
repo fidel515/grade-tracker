@@ -449,6 +449,35 @@ def reset_user_password(user_id):
     })
 
 
+@app.route("/api/admin/reset-student-password", methods=["POST"])
+def reset_student_password():
+    """Reset a student password back to their username — admin only."""
+    admin = get_current_user()
+    if not admin or admin["role"] != "admin":
+        return jsonify({"error": "Unauthorized"}), 403
+
+    data  = request.get_json()
+    email = data.get("email", "").strip()
+
+    conn = get_db()
+    user = conn.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
+
+    if not user:
+        conn.close()
+        return jsonify({"error": "User not found"}), 404
+
+    new_password = user["username"]
+    conn.execute("UPDATE users SET password = ? WHERE email = ?",
+                 (generate_password_hash(new_password), email))
+    conn.commit()
+    conn.close()
+
+    return jsonify({
+        "message": "Password reset successfully",
+        "new_password": new_password
+    })
+
+
 # ============================================================
 # STUDENT & GRADE API ENDPOINTS (used by teacher dashboard)
 # ============================================================
@@ -664,7 +693,6 @@ def my_grades():
 # START
 # ============================================================
 
-    
 if __name__ == "__main__":
     init_db()
     port = int(os.environ.get("PORT", 5000))
