@@ -248,6 +248,13 @@
         errorBox.classList.add("show");
         return;
       }
+      // Validate email format
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+if (!emailRegex.test(email)) {
+  errorBox.textContent = "Please enter a valid email e.g. jane@school.ac.ke";
+  errorBox.classList.add("show");
+  return;
+}
 
       // Check passwords match
       if (password !== confirm) {
