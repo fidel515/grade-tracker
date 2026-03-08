@@ -18,12 +18,20 @@
     .tab.active { background:var(--accent); color:#0d0f14; }
     .tab-content { display:none; } .tab-content.active { display:block; animation:fadeUp 0.3s ease; }
     @keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+
+    /* Change password card */
+    .change-pw-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:2rem; max-width:460px; }
+    .change-pw-card h2 { font-size:1rem; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; color:var(--muted); margin-bottom:1.5rem; }
+    .pw-group { display:flex; flex-direction:column; gap:6px; margin-bottom:1.2rem; }
+    .pw-group label { font-size:0.75rem; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:var(--muted); font-family:var(--font-mono); }
+    .pw-group .password-wrap input { background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:12px 44px 12px 14px; color:var(--text); font-family:var(--font-display); font-size:0.9rem; outline:none; transition:border-color 0.2s; width:100%; }
+    .pw-group .password-wrap input:focus { border-color:var(--accent); }
   </style>
 </head>
 <body>
 <main style="max-width:1100px;margin:0 auto;padding:2.5rem 2rem">
 
-  <!-- Top bar with welcome and logout -->
+  <!-- Top bar -->
   <div class="top-bar">
     <div style="display:flex;align-items:center;gap:12px">
       <span class="logo-icon" style="color:var(--accent);font-size:1.6rem">◈</span>
@@ -36,11 +44,12 @@
     <button class="logout-btn" onclick="logout()">Sign Out</button>
   </div>
 
-  <!-- Tabs -->
+  <!-- Tabs — added Change Password tab -->
   <div class="tabs">
     <button class="tab active" data-tab="overview">Overview</button>
     <button class="tab" data-tab="teachers">Teachers</button>
     <button class="tab" data-tab="students">Students</button>
+    <button class="tab" data-tab="password">Change Password</button>
   </div>
 
   <!-- OVERVIEW TAB -->
@@ -97,25 +106,79 @@
     </div>
   </div>
 
+  <!-- CHANGE PASSWORD TAB -->
+  <div id="tab-password" class="tab-content">
+    <div class="page-title"><h1>Change Password</h1><p>Update your admin password</p></div>
+    <div class="change-pw-card">
+      <h2>Update Password</h2>
+
+      <!-- Current password -->
+      <div class="pw-group">
+        <label>Current Password</label>
+        <div class="password-wrap">
+          <input type="password" id="current-pw" placeholder="Enter your current password"/>
+          <button type="button" class="eye-btn" onclick="togglePw('current-pw', this)">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:18px;height:18px">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- New password -->
+      <div class="pw-group">
+        <label>New Password</label>
+        <div class="password-wrap">
+          <input type="password" id="new-pw" placeholder="Enter a new password"/>
+          <button type="button" class="eye-btn" onclick="togglePw('new-pw', this)">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:18px;height:18px">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Confirm new password -->
+      <div class="pw-group">
+        <label>Confirm New Password</label>
+        <div class="password-wrap">
+          <input type="password" id="confirm-pw" placeholder="Repeat your new password"/>
+          <button type="button" class="eye-btn" onclick="togglePw('confirm-pw', this)">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:18px;height:18px">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <button class="btn-primary" style="width:100%;margin-top:0.5rem" onclick="changePassword()">Update Password</button>
+      <div id="pw-msg" class="msg" style="margin-top:12px"></div>
+    </div>
+  </div>
+
 </main>
 <div id="toast" class="toast"></div>
 <script>
-  // ── Eye icon toggle ──
+
+  // ── Eye icon toggle for teacher password field ──
   function togglePassword(inputId, btn) {
     const input = document.getElementById(inputId);
     const isHidden = input.type === "password";
     input.type = isHidden ? "text" : "password";
     btn.innerHTML = isHidden
-      ? `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:18px;height:18px">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.477 0-8.268-2.943-9.542-7a9.956 9.956 0 012.223-3.592M6.53 6.533A9.956 9.956 0 0112 5c4.477 0 8.268 2.943 9.542 7a9.978 9.978 0 01-4.072 5.293M15 12a3 3 0 11-4.243-4.243M3 3l18 18"/>
-        </svg>`
-      : `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:18px;height:18px">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-        </svg>`;
+      ? `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:18px;height:18px"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.477 0-8.268-2.943-9.542-7a9.956 9.956 0 012.223-3.592M6.53 6.533A9.956 9.956 0 0112 5c4.477 0 8.268 2.943 9.542 7a9.978 9.978 0 01-4.072 5.293M15 12a3 3 0 11-4.243-4.243M3 3l18 18"/></svg>`
+      : `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:18px;height:18px"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>`;
   }
 
-  // Tab switching
+  // ── Eye icon toggle for change password fields ──
+  function togglePw(inputId, btn) {
+    togglePassword(inputId, btn);
+  }
+
+  // ── Tab switching ──
   document.querySelectorAll(".tab").forEach(btn => {
     btn.addEventListener("click", () => {
       document.querySelectorAll(".tab").forEach(b => b.classList.remove("active"));
@@ -184,7 +247,6 @@
 
   async function addTeacher() {
     const msg = document.getElementById("teacher-msg");
-    // Validate email format
     const email = document.getElementById("t-email").value.trim();
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
@@ -195,7 +257,7 @@
     const res = await api("POST", "/api/admin/teachers", {
       fullname: document.getElementById("t-name").value.trim(),
       username: document.getElementById("t-username").value.trim(),
-      email:    document.getElementById("t-email").value.trim(),
+      email:    email,
       password: document.getElementById("t-password").value,
       subject:  document.getElementById("t-subject").value.trim()
     });
@@ -207,6 +269,51 @@
     if (!confirm("Delete this teacher?")) return;
     await api("DELETE", "/api/admin/teachers/" + id);
     showToast("Teacher deleted", "error"); loadTeachers();
+  }
+
+  // ── Change Password ──
+  async function changePassword() {
+    const currentPw  = document.getElementById("current-pw").value;
+    const newPw      = document.getElementById("new-pw").value;
+    const confirmPw  = document.getElementById("confirm-pw").value;
+    const msg        = document.getElementById("pw-msg");
+    msg.textContent  = ""; msg.className = "msg";
+
+    if (!currentPw || !newPw || !confirmPw) {
+      msg.textContent = "Please fill in all fields.";
+      msg.className = "msg error"; return;
+    }
+    if (newPw !== confirmPw) {
+      msg.textContent = "New passwords do not match.";
+      msg.className = "msg error"; return;
+    }
+    if (newPw.length < 6) {
+      msg.textContent = "Password must be at least 6 characters.";
+      msg.className = "msg error"; return;
+    }
+    if (currentPw === newPw) {
+      msg.textContent = "New password must be different from current password.";
+      msg.className = "msg error"; return;
+    }
+
+    const res  = await fetch("/api/change-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ current_password: currentPw, new_password: newPw })
+    });
+    const data = await res.json();
+
+    if (data.error) {
+      msg.textContent = data.error;
+      msg.className = "msg error";
+    } else {
+      msg.textContent = "✓ Password updated successfully!";
+      msg.className = "msg success";
+      document.getElementById("current-pw").value  = "";
+      document.getElementById("new-pw").value      = "";
+      document.getElementById("confirm-pw").value  = "";
+      showToast("Password updated!");
+    }
   }
 
   async function logout() {
