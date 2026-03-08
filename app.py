@@ -12,6 +12,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 # check_password_hash    → checks if entered password matches the encrypted one
 
 import sqlite3
+import re  # used for email format validation
 import os
 
 app = Flask(__name__)
