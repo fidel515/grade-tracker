@@ -157,19 +157,20 @@
       <!-- Full name -->
       <div class="auth-group">
         <label for="fullname">Full Name</label>
-        <input type="text" id="fullname" placeholder="e.g. Jane Mwangi"/>
+        <input type="text" id="fullname" placeholder="e.g. Jane Mwangi" maxlength="32"/>
       </div>
 
       <!-- Username -->
       <div class="auth-group">
         <label for="username">Username</label>
-        <input type="text" id="username" placeholder="Choose a username"/>
+        <input type="text" id="username" placeholder="Choose a username" maxlength="32"/>
       </div>
 
-      <!-- Email -->
+      <!-- Email with real-time validation -->
       <div class="auth-group">
         <label for="email">Email Address</label>
-        <input type="email" id="email" placeholder="e.g. jane@school.ac.ke"/>
+        <input type="email" id="email" placeholder="e.g. jane@school.ac.ke" oninput="validateEmail(this)"/>
+        <span id="email-hint" style="font-size:0.72rem;font-family:var(--font-mono);margin-top:3px;display:none"></span>
       </div>
 
       <!-- Password with eye toggle -->
@@ -227,6 +228,26 @@
           </svg>`;
     }
 
+    // Real-time email validation as user types
+    function validateEmail(input) {
+      const hint = document.getElementById("email-hint");
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (input.value.length === 0) {
+        hint.style.display = "none";
+        input.style.borderColor = "";
+      } else if (!emailRegex.test(input.value)) {
+        hint.textContent = "❌ Invalid email format";
+        hint.style.color = "var(--red)";
+        hint.style.display = "block";
+        input.style.borderColor = "var(--red)";
+      } else {
+        hint.textContent = "✓ Valid email";
+        hint.style.color = "var(--green)";
+        hint.style.display = "block";
+        input.style.borderColor = "var(--green)";
+      }
+    }
+
     document.getElementById("register-btn").addEventListener("click", register);
 
     async function register() {
@@ -248,13 +269,14 @@
         errorBox.classList.add("show");
         return;
       }
-      // Validate email format
-const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-if (!emailRegex.test(email)) {
-  errorBox.textContent = "Please enter a valid email e.g. jane@school.ac.ke";
-  errorBox.classList.add("show");
-  return;
-}
+
+      // Validate email format — must have characters, @, domain, dot and extension
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        errorBox.textContent = "Please enter a valid email e.g. jane@school.ac.ke";
+        errorBox.classList.add("show");
+        return;
+      }
 
       // Check passwords match
       if (password !== confirm) {
