@@ -46,10 +46,17 @@ def send_reset_email(to_email, token):
     """
     msg.attach(MIMEText(html, "html"))
 
+    print(f"[EMAIL DEBUG] Attempting to send to: {to_email}")
+    print(f"[EMAIL DEBUG] MAIL_USERNAME: {MAIL_USERNAME}")
+    print(f"[EMAIL DEBUG] MAIL_PASSWORD set: {'yes' if MAIL_PASSWORD else 'NO - EMPTY!'}")
+    print(f"[EMAIL DEBUG] APP_BASE_URL: {APP_BASE_URL}")
+
     with smtplib.SMTP(MAIL_HOST, MAIL_PORT) as server:
+        server.set_debuglevel(1)
         server.starttls()
         server.login(MAIL_USERNAME, MAIL_PASSWORD)
         server.sendmail(MAIL_FROM, to_email, msg.as_string())
+    print(f"[EMAIL DEBUG] Email sent successfully to {to_email}")
 
 # ============================================================
 # DATABASE HELPERS
@@ -264,8 +271,8 @@ def forgot_password():
     try:
         send_reset_email(user["email"], token)
     except Exception as e:
-        print(f"Email error: {e}")
-        return jsonify({"error": "Failed to send email. Please try again later."}), 500
+        print(f"[EMAIL ERROR] {type(e).__name__}: {e}")
+        return jsonify({"error": f"Email failed: {str(e)}"}), 500
 
     return jsonify({"message": "If that email exists, a reset link has been sent."})
 
