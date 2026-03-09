@@ -129,6 +129,11 @@
           <div class="form-group"><label>Grade Scored</label><input type="number" id="grade-value" placeholder="e.g. 78" min="0"/></div>
           <div class="form-group"><label>Out of (Max)</label><input type="number" id="grade-max" placeholder="100" value="100" min="1"/></div>
         </div>
+        <div class="form-group" style="margin-top:0.8rem">
+          <label>Feedback / Comment <span style="color:var(--muted);font-size:0.72rem;text-transform:none;letter-spacing:0">(optional)</span></label>
+          <textarea id="grade-comment" maxlength="500" placeholder="e.g. Good effort! Review chapter 3 for improvement." style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-family:var(--font-display);font-size:0.9rem;outline:none;width:100%;resize:vertical;min-height:72px;transition:border-color 0.2s" oninput="document.getElementById('grade-comment-count').textContent=500-this.value.length"></textarea>
+          <span id="grade-comment-count" style="font-size:0.72rem;font-family:var(--font-mono);color:var(--muted);float:right">500</span>
+        </div>
       </div>
       <button class="btn-primary" id="add-grade-btn" style="margin-top:1rem">Save Grade</button>
       <div id="grade-msg" class="msg"></div>
@@ -215,6 +220,11 @@
         <input class="modal-input" id="edit-max-val" type="number" min="1" placeholder="100"/>
       </div>
     </div>
+    <div style="margin-bottom:1rem">
+      <label class="modal-label">Feedback / Comment <span style="color:var(--muted);font-size:0.7rem;text-transform:none;letter-spacing:0">(optional)</span></label>
+      <textarea class="modal-input" id="edit-comment" maxlength="500" placeholder="e.g. Well done! Keep it up." style="resize:vertical;min-height:68px;margin-top:4px" oninput="document.getElementById('edit-comment-count').textContent=500-this.value.length"></textarea>
+      <span id="edit-comment-count" style="font-size:0.72rem;font-family:var(--font-mono);color:var(--muted);float:right">500</span>
+    </div>
     <div class="modal-actions">
       <button class="btn-primary" onclick="saveEditGrade()">Save Changes</button>
       <button class="btn-danger" onclick="closeEditModal()">Cancel</button>
@@ -279,6 +289,11 @@
 
   function escHtml(str) {
     return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  }
+
+  function safeStr(val) {
+    if (val === null || val === undefined) return "—";
+    return String(val);
   }
 
   // ── Overview ──
@@ -373,6 +388,7 @@
             <th style="text-align:left;padding:4px 8px">Subject</th>
             <th style="text-align:left;padding:4px 8px">Score</th>
             <th style="text-align:left;padding:4px 8px">Percentage</th>
+            <th style="text-align:left;padding:4px 8px">Feedback</th>
             <th style="text-align:left;padding:4px 8px">Edit</th>
             <th style="text-align:left;padding:4px 8px">Remove</th>
           </tr></thead>
@@ -381,7 +397,8 @@
             <td style="padding:6px 8px;font-weight:600">${escHtml(g.subject)}</td>
             <td style="padding:6px 8px;font-family:var(--font-mono)">${g.grade}/${g.max_grade}</td>
             <td style="padding:6px 8px;font-family:var(--font-mono);color:${pct>=50?'var(--green)':'var(--red)'}">${pct}%</td>
-            <td style="padding:6px 8px"><button class="btn-primary" onclick="openEditModal(${g.id},'${escHtml(g.subject)}',${g.grade},${g.max_grade})">Edit</button></td>
+            <td style="padding:6px 8px;max-width:200px">${g.comment ? `<span style="font-size:0.8rem;color:var(--muted);font-style:italic" title="${escHtml(g.comment)}">💬 ${escHtml(g.comment.length>40?g.comment.substring(0,40)+'…':g.comment)}</span>` : '<span style="color:var(--border);font-size:0.75rem;font-family:var(--font-mono)">—</span>'}</td>
+            <td style="padding:6px 8px"><button class="btn-primary" onclick="openEditModal(${g.id},'${escHtml(g.subject)}',${g.grade},${g.max_grade},${JSON.stringify(g.comment||'')})">Edit</button></td>
             <td style="padding:6px 8px"><button class="btn-danger" onclick="deleteGrade(${g.id})">Remove</button></td>
           </tr>`; }).join("")}
           </tbody>
@@ -390,11 +407,13 @@
   }
 
   // ── Edit modal ──
-  function openEditModal(id, subject, grade, maxGrade) {
+  function openEditModal(id, subject, grade, maxGrade, comment) {
     document.getElementById("edit-grade-id").value  = id;
     document.getElementById("edit-subject").value   = subject;
     document.getElementById("edit-grade-val").value = grade;
     document.getElementById("edit-max-val").value   = maxGrade;
+    document.getElementById("edit-comment").value   = comment || "";
+    document.getElementById("edit-comment-count").textContent = 500 - (comment ? comment.length : 0);
     document.getElementById("edit-modal").classList.add("open");
   }
   function closeEditModal() { document.getElementById("edit-modal").classList.remove("open"); }
@@ -405,8 +424,9 @@
     const subject  = document.getElementById("edit-subject").value.trim();
     const grade    = parseFloat(document.getElementById("edit-grade-val").value);
     const maxGrade = parseFloat(document.getElementById("edit-max-val").value);
+    const comment  = document.getElementById("edit-comment").value.trim();
     if (!subject || isNaN(grade) || isNaN(maxGrade)) { showToast("Please fill all fields","error"); return; }
-    const res = await api("PUT", "/api/grades/"+id, { subject, grade, max_grade: maxGrade });
+    const res = await api("PUT", "/api/grades/"+id, { subject, grade, max_grade: maxGrade, comment: comment || null });
     if (res.error) { showToast(res.error,"error"); }
     else { showToast("Grade updated!"); closeEditModal(); loadGradesTab(); loadOverview(); }
   }
@@ -450,31 +470,38 @@
 
   // ── Export Students PDF ──
   async function exportStudentsPDF() {
-    const students = await api("GET", "/api/students");
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    const now = new Date().toLocaleDateString();
-    doc.setFontSize(18); doc.setFont("helvetica","bold");
-    doc.text("GradeVault — Class Report", 14, 20);
-    doc.setFontSize(10); doc.setFont("helvetica","normal"); doc.setTextColor(150);
-    doc.text("Subject: "+SUBJECT+"   |   Date: "+now, 14, 28);
-    doc.setTextColor(0);
-    let y = 40;
-    doc.setFont("helvetica","bold");
-    doc.text("#",14,y); doc.text("Name",24,y); doc.text("Email",90,y); doc.text("Average",155,y); doc.text("Status",178,y);
-    doc.setDrawColor(200); doc.line(14,y+2,196,y+2); y+=8;
-    doc.setFont("helvetica","normal");
-    students.forEach((s,i) => {
-      if(y>270){doc.addPage();y=20;}
-      doc.text(String(i+1),14,y);
-      doc.text(s.name.substring(0,28),24,y);
-      doc.text(s.email.substring(0,34),90,y);
-      doc.text(s.average!==null?s.average+"%":"—",155,y);
-      doc.setTextColor(s.status==="Pass"?[34,197,94]:s.status==="Fail"?[239,68,68]:[150,150,150]);
-      doc.text(s.status,178,y); doc.setTextColor(0); y+=7;
-    });
-    doc.save("class-report-"+SUBJECT.toLowerCase()+".pdf");
-    showToast("PDF downloaded!");
+    try {
+      const students = await api("GET", "/api/students");
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      const now = new Date().toLocaleDateString();
+      doc.setFontSize(18); doc.setFont("helvetica","bold");
+      doc.text("GradeVault - Class Report", 14, 20);
+      doc.setFontSize(10); doc.setFont("helvetica","normal"); doc.setTextColor(150);
+      doc.text("Subject: "+SUBJECT+"   |   Date: "+now, 14, 28);
+      doc.setTextColor(0);
+      let y = 40;
+      doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.setTextColor(80);
+      doc.text("#",14,y); doc.text("Name",24,y); doc.text("Email",90,y); doc.text("Average",155,y); doc.text("Status",178,y);
+      doc.setDrawColor(200); doc.line(14,y+2,196,y+2); y+=8;
+      doc.setFont("helvetica","normal"); doc.setTextColor(0); doc.setFontSize(10);
+      students.forEach((s,i) => {
+        if(y>270){doc.addPage();y=20;}
+        doc.setTextColor(0);
+        doc.text(safeStr(i+1),14,y);
+        doc.text(safeStr(s.name).substring(0,28),24,y);
+        doc.text(safeStr(s.email).substring(0,34),90,y);
+        doc.text(s.average!==null?safeStr(s.average)+"%":"—",155,y);
+        doc.setTextColor(s.status==="Pass"?34:s.status==="Fail"?239:150, s.status==="Pass"?197:s.status==="Fail"?68:150, s.status==="Pass"?94:s.status==="Fail"?68:150);
+        doc.text(safeStr(s.status),178,y);
+        doc.setTextColor(0); y+=7;
+      });
+      doc.save("class-report-"+SUBJECT.toLowerCase().replace(/[^a-z0-9]/g,"-")+".pdf");
+      showToast("PDF downloaded!");
+    } catch(err) {
+      console.error("PDF error:", err);
+      showToast("PDF failed: "+err.message,"error");
+    }
   }
 
   // ── Add grade ──
@@ -483,11 +510,12 @@
     const subject    = document.getElementById("grade-subject").value.trim();
     const grade      = document.getElementById("grade-value").value;
     const max_grade  = document.getElementById("grade-max").value || 100;
+    const comment    = document.getElementById("grade-comment").value.trim();
     const msg        = document.getElementById("grade-msg");
-    if (!student_id||!subject||grade==="") { msg.textContent="Please fill in all fields."; msg.className="msg error"; return; }
-    const res = await api("POST","/api/grades",{student_id:parseInt(student_id),subject,grade:parseFloat(grade),max_grade:parseFloat(max_grade)});
+    if (!student_id||!subject||grade==="") { msg.textContent="Please fill in all required fields."; msg.className="msg error"; return; }
+    const res = await api("POST","/api/grades",{student_id:parseInt(student_id),subject,grade:parseFloat(grade),max_grade:parseFloat(max_grade),comment:comment||null});
     if (res.error) { msg.textContent=res.error; msg.className="msg error"; }
-    else { msg.textContent="✓ Grade saved!"; msg.className="msg success"; document.getElementById("grade-value").value=""; document.getElementById("grade-max").value="100"; showToast("Grade saved!"); loadGradesTab(); loadOverview(); }
+    else { msg.textContent="✓ Grade saved!"; msg.className="msg success"; document.getElementById("grade-value").value=""; document.getElementById("grade-max").value="100"; document.getElementById("grade-comment").value=""; showToast("Grade saved!"); loadGradesTab(); loadOverview(); }
   });
 
   // ── Delete student ──
