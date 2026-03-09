@@ -119,6 +119,43 @@ def get_current_user():
 
 
 # ============================================================
+# CBC GRADING HELPER
+# ============================================================
+
+# CBC subjects preset list
+# Kenya CBC Junior Secondary School (Grade 7–9) subjects
+CBC_SUBJECTS = [
+    "English",
+    "Kiswahili",
+    "Mathematics",
+    "Integrated Science",
+    "Social Studies",
+    "Religious Education (CRE)",
+    "Religious Education (IRE)",
+    "Religious Education (HRE)",
+    "Pre-Technical Studies",
+    "Business Studies",
+    "Computer Studies",
+    "Agriculture",
+    "Nutrition & Home Science",
+    "Creative Arts & Sports"
+]
+
+def cbc_status(average):
+    """Return CBC performance level based on percentage average."""
+    if average is None:
+        return "No Grades"
+    if average >= 75:
+        return "EE"   # Exceeds Expectation
+    elif average >= 50:
+        return "ME"   # Meets Expectation
+    elif average >= 25:
+        return "AE"   # Approaches Expectation
+    else:
+        return "BE"   # Below Expectation
+
+
+# ============================================================
 # PAGE ROUTES
 # ============================================================
 
@@ -294,6 +331,11 @@ def change_password():
 # ADMIN API ENDPOINTS
 # ============================================================
 
+@app.route("/api/cbc-subjects", methods=["GET"])
+def get_cbc_subjects():
+    return jsonify(CBC_SUBJECTS)
+
+
 @app.route("/api/admin/teachers", methods=["GET"])
 def get_teachers():
     user = get_current_user()
@@ -322,8 +364,14 @@ def add_teacher():
     password = data.get("password", "")
     subject  = data.get("subject", "").strip()
 
-    if not fullname or not username or not email or not password or not subject:
+    if not fullname or not username or not email or not password:
         return jsonify({"error": "All fields are required"}), 400
+
+    # Validate at least one subject selected
+    subject_list = [s.strip() for s in subject.split(",") if s.strip()]
+    if not subject_list:
+        return jsonify({"error": "Please select at least one subject"}), 400
+    subject = ",".join(subject_list)  # normalise
 
     if len(fullname) > 32:
         return jsonify({"error": "Full name must be 32 characters or less"}), 400
@@ -469,19 +517,23 @@ def get_students():
     cursor.execute("SELECT * FROM students ORDER BY name")
     students = cursor.fetchall()
 
+    # For teachers with multiple subjects, split and filter by any of their subjects
+    teacher_subjects = [s.strip() for s in user["subject"].split(",")] if user.get("subject") else []
+
     result = []
     for s in students:
-        if user["role"] == "teacher":
+        if user["role"] == "teacher" and teacher_subjects:
+            placeholders = ",".join(["%s"] * len(teacher_subjects))
             cursor.execute(
-                "SELECT * FROM grades WHERE student_id = %s AND subject = %s",
-                (s["id"], user["subject"])
+                f"SELECT * FROM grades WHERE student_id = %s AND subject IN ({placeholders})",
+                [s["id"]] + teacher_subjects
             )
         else:
             cursor.execute("SELECT * FROM grades WHERE student_id = %s", (s["id"],))
 
         grade_list = [dict(g) for g in cursor.fetchall()]
         avg    = round(sum(g["grade"] for g in grade_list) / len(grade_list), 2) if grade_list else None
-        status = "Pass" if avg and avg >= 50 else ("Fail" if avg is not None else "No Grades")
+        status = cbc_status(avg)
 
         result.append({
             "id": s["id"], "name": s["name"], "email": s["email"],
@@ -614,26 +666,48 @@ def get_stats():
 
     conn = get_db()
     cursor = conn.cursor()
+
+    # For teachers, scope stats to their subjects only
+    teacher_subjects = []
+    if user["role"] == "teacher" and user.get("subject"):
+        teacher_subjects = [s.strip() for s in user["subject"].split(",") if s.strip()]
+
     cursor.execute("SELECT COUNT(*) as c FROM students")
     total_students = cursor.fetchone()["c"]
-    cursor.execute("SELECT grade FROM grades")
+
+    if teacher_subjects:
+        placeholders = ",".join(["%s"] * len(teacher_subjects))
+        cursor.execute(f"SELECT grade FROM grades WHERE subject IN ({placeholders})", teacher_subjects)
+    else:
+        cursor.execute("SELECT grade FROM grades")
     grades = [g["grade"] for g in cursor.fetchall()]
     overall_avg = round(sum(grades) / len(grades), 2) if grades else 0
-    cursor.execute("""
-        SELECT COUNT(*) as c FROM (
-            SELECT student_id, AVG(grade) as avg FROM grades
-            GROUP BY student_id HAVING AVG(grade) >= 50
-        ) sub
-    """)
-    passing = cursor.fetchone()["c"]
+
+    if teacher_subjects:
+        placeholders = ",".join(["%s"] * len(teacher_subjects))
+        cursor.execute(f"""
+            SELECT COUNT(*) as c FROM (
+                SELECT student_id, AVG(grade) as avg FROM grades
+                WHERE subject IN ({placeholders})
+                GROUP BY student_id HAVING AVG(grade) >= 50
+            ) sub
+        """, teacher_subjects)
+    else:
+        cursor.execute("""
+            SELECT COUNT(*) as c FROM (
+                SELECT student_id, AVG(grade) as avg FROM grades
+                GROUP BY student_id HAVING AVG(grade) >= 50
+            ) sub
+        """)
+    meeting = cursor.fetchone()["c"]
     cursor.close()
     conn.close()
 
     return jsonify({
-        "total_students":   total_students,
-        "overall_average":  overall_avg,
-        "passing_students": passing,
-        "failing_students": total_students - passing
+        "total_students":    total_students,
+        "overall_average":   overall_avg,
+        "meeting_students":  meeting,
+        "below_students":    total_students - meeting
     })
 
 
@@ -656,7 +730,7 @@ def my_grades():
     cursor.execute("SELECT * FROM grades WHERE student_id = %s", (student["id"],))
     grade_list = [dict(g) for g in cursor.fetchall()]
     avg    = round(sum(g["grade"] for g in grade_list) / len(grade_list), 2) if grade_list else None
-    status = "Pass" if avg and avg >= 50 else ("Fail" if avg is not None else "No Grades")
+    status = cbc_status(avg)
 
     cursor.close()
     conn.close()
@@ -754,7 +828,7 @@ def search_students():
         cursor.execute("SELECT * FROM grades WHERE student_id = %s", (s["id"],))
         grade_list = [dict(g) for g in cursor.fetchall()]
         avg    = round(sum(g["grade"] for g in grade_list) / len(grade_list), 2) if grade_list else None
-        status = "Pass" if avg and avg >= 50 else ("Fail" if avg is not None else "No Grades")
+        status = cbc_status(avg)
         result.append({
             "id": s["id"], "name": s["name"], "email": s["email"],
             "grades": grade_list, "average": avg, "status": status
@@ -823,7 +897,7 @@ def my_report():
     """, (student["id"],))
     grade_list = [dict(g) for g in cursor.fetchall()]
     avg    = round(sum(g["grade"] for g in grade_list) / len(grade_list), 2) if grade_list else None
-    status = "Pass" if avg and avg >= 50 else ("Fail" if avg is not None else "No Grades")
+    status = cbc_status(avg)
 
     # Subject breakdown
     subjects = {}
@@ -867,7 +941,7 @@ def school_report():
         cursor.execute("SELECT grade FROM grades WHERE student_id = %s", (s["id"],))
         grades = [g["grade"] for g in cursor.fetchall()]
         avg    = round(sum(grades) / len(grades), 2) if grades else None
-        status = "Pass" if avg and avg >= 50 else ("Fail" if avg is not None else "No Grades")
+        status = cbc_status(avg)
         student_data.append({
             "name": s["name"], "email": s["email"],
             "average": avg, "status": status,
@@ -882,8 +956,8 @@ def school_report():
     cursor.execute("SELECT grade FROM grades")
     all_grades = [g["grade"] for g in cursor.fetchall()]
     overall_avg = round(sum(all_grades) / len(all_grades), 2) if all_grades else 0
-    passing = sum(1 for s in student_data if s["status"] == "Pass")
-    failing = sum(1 for s in student_data if s["status"] == "Fail")
+    passing = sum(1 for s in student_data if s["status"] in ["EE", "ME"])
+    failing = sum(1 for s in student_data if s["status"] in ["AE", "BE"])
 
     cursor.close()
     conn.close()
