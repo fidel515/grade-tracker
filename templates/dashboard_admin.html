@@ -89,11 +89,15 @@
     <div class="page-title"><h1>Teachers</h1><p>Manage teacher accounts</p></div>
     <div class="form-card">
       <h2>Add New Teacher</h2>
-      <div class="form-row">
+
+      <!-- Row 1: Name + Username -->
+      <div class="form-row" style="margin-bottom:1rem">
         <div class="form-group"><label>Full Name</label><input type="text" id="t-name" placeholder="e.g. Mr. Kamau" maxlength="32"/></div>
         <div class="form-group"><label>Username</label><input type="text" id="t-username" placeholder="e.g. kamau" maxlength="32"/></div>
       </div>
-      <div class="form-row" style="margin-top:1rem">
+
+      <!-- Row 2: Email + Password -->
+      <div class="form-row" style="margin-bottom:1rem">
         <div class="form-group"><label>Email</label><input type="email" id="t-email" placeholder="kamau@school.ac.ke"/></div>
         <div class="form-group"><label>Password</label>
           <div class="password-wrap">
@@ -103,15 +107,21 @@
             </button>
           </div>
         </div>
-        <div class="form-group" style="grid-column:1/-1">
-          <label>Subjects <span style="color:var(--muted);font-size:0.72rem;text-transform:none;letter-spacing:0;font-family:var(--font-display)">(select one or more)</span></label>
-          <div id="subject-checkboxes" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;margin-top:8px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px">
-            <!-- populated by JS -->
-          </div>
-        </div>
-        <button class="btn-primary" onclick="addTeacher()" style="align-self:flex-end">Add Teacher</button>
       </div>
-      <div id="teacher-msg" class="msg"></div>
+
+      <!-- Row 3: Subjects (full width) -->
+      <div style="margin-bottom:1.2rem">
+        <label style="font-size:0.75rem;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);font-family:var(--font-mono)">
+          Subjects <span style="color:var(--muted);font-size:0.72rem;text-transform:none;letter-spacing:0;font-family:var(--font-display);font-weight:400">(select one or more)</span>
+        </label>
+        <div id="subject-checkboxes" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px;margin-top:8px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px">
+          <!-- populated by JS -->
+        </div>
+      </div>
+
+      <!-- Row 4: Add Teacher button -->
+      <button class="btn-primary" onclick="addTeacher()" style="min-width:160px">Add Teacher</button>
+      <div id="teacher-msg" class="msg" style="margin-top:10px"></div>
     </div>
     <div class="search-wrap" style="margin-top:1.5rem">
       <input class="search-input" id="teacher-search" type="text" placeholder="🔍 Search by name, username or subject..." oninput="searchTeachers(this.value)"/>
@@ -311,9 +321,11 @@
         <td style="font-family:var(--font-mono)">${escHtml(t.username)}</td>
         <td style="font-family:var(--font-mono);font-size:0.8rem;color:var(--muted)">${escHtml(t.email)}</td>
         <td style="max-width:240px">
-          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-            ${t.subject ? t.subject.split(',').map(s=>`<span class="subject-chip" style="display:inline-block;margin:2px 2px">${escHtml(s.trim())}</span>`).join('') : '<span style="color:var(--muted);font-size:0.8rem">—</span>'}
-            <button class="btn-primary" style="padding:3px 10px;font-size:0.75rem;white-space:nowrap" onclick="openSubjectEditor(${t.id}, '${escHtml(t.fullname)}', '${escHtml(t.subject||'')}')">✏️ Edit</button>
+          <div style="display:flex;align-items:center;gap:6px">
+            <select style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:6px 10px;color:var(--text);font-family:var(--font-mono);font-size:0.8rem;outline:none;max-width:180px">
+              ${t.subject ? t.subject.split(',').map(s=>`<option>${escHtml(s.trim())}</option>`).join('') : '<option disabled>No subjects</option>'}
+            </select>
+            <button class="btn-primary" style="padding:4px 10px;font-size:0.75rem;white-space:nowrap" onclick="openSubjectEditor(${t.id}, '${escHtml(t.fullname)}', '${escHtml(t.subject||'')}')">✏️ Edit</button>
           </div>
         </td>
         <td><button class="btn-danger" onclick="deleteTeacher(${t.id})">Delete</button></td>
