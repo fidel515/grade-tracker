@@ -412,7 +412,12 @@
             <td style="padding:6px 8px;font-family:var(--font-mono)">${g.grade}/${g.max_grade}</td>
             <td style="padding:6px 8px;font-family:var(--font-mono);color:${pct>=50?'var(--green)':'var(--red)'}">${pct}%</td>
             <td style="padding:6px 8px;max-width:200px">${g.comment ? `<span style="font-size:0.8rem;color:var(--muted);font-style:italic" title="${escHtml(g.comment)}">💬 ${escHtml(g.comment.length>40?g.comment.substring(0,40)+'…':g.comment)}</span>` : '<span style="color:var(--border);font-size:0.75rem;font-family:var(--font-mono)">—</span>'}</td>
-            <td style="padding:6px 8px"><button class="btn-primary" onclick="openEditModal(${g.id},'${escHtml(g.subject)}',${g.grade},${g.max_grade},${JSON.stringify(g.comment||'')})">Update Grade</button></td>
+            <td style="padding:6px 8px"><button class="btn-primary btn-edit-grade"
+              data-id="${g.id}"
+              data-subject="${escHtml(g.subject)}"
+              data-grade="${g.grade}"
+              data-max="${g.max_grade}"
+              data-comment="${g.comment ? escHtml(g.comment) : ''}">Update Grade</button></td>
             <td style="padding:6px 8px"><button class="btn-danger" onclick="deleteGrade(${g.id})">Remove</button></td>
           </tr>`; }).join("")}
           </tbody>
@@ -421,6 +426,19 @@
   }
 
   // ── Edit modal ──
+  // Safe event delegation for Update Grade buttons (avoids inline onclick JS injection)
+  document.addEventListener("click", function(e) {
+    const btn = e.target.closest(".btn-edit-grade");
+    if (!btn) return;
+    openEditModal(
+      btn.dataset.id,
+      btn.dataset.subject,
+      parseFloat(btn.dataset.grade),
+      parseFloat(btn.dataset.max),
+      btn.dataset.comment || ""
+    );
+  });
+
   function openEditModal(id, subject, grade, maxGrade, comment) {
     document.getElementById("edit-grade-id").value  = id;
     document.getElementById("edit-subject").value   = subject;
