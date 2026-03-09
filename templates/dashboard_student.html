@@ -228,8 +228,8 @@
     document.getElementById("val-subjects").textContent = subjects.length;
 
     const statusCard = document.getElementById("status-card");
-    if (data.status === "Pass")      statusCard.classList.add("green");
-    else if (data.status === "Fail") statusCard.classList.add("red");
+    if (data.status === "EE" || data.status === "ME")      statusCard.classList.add("green");
+    else if (data.status === "AE" || data.status === "BE") statusCard.classList.add("red");
 
     if (!data.grades || !data.grades.length) {
       container.innerHTML = '<div class="no-grades">No grades recorded yet. Your teacher will add them soon! 📚</div>';
@@ -255,7 +255,7 @@
           <div class="progress-fill ${fillClass}" style="width:${avg}%"></div>
         </div>
         <table class="grc-table">
-          <thead><tr><th>Score</th><th>Out of</th><th>Percentage</th><th>Date</th></tr></thead>
+          <thead><tr><th>Score</th><th>Out of</th><th>Percentage</th><th>Date</th><th>Feedback</th></tr></thead>
           <tbody>
             ${grades.map(g => {
               const pct  = Math.round((g.grade / g.max_grade) * 100);
@@ -265,6 +265,7 @@
                 <td style="font-family:var(--font-mono)">${g.max_grade}</td>
                 <td style="font-family:var(--font-mono);color:${pct>=50?'var(--green)':'var(--red)'}">${pct}%</td>
                 <td style="font-family:var(--font-mono);color:var(--muted);font-size:0.8rem">${date}</td>
+                <td style="font-size:0.82rem;color:var(--muted);font-style:italic;max-width:200px">${g.comment ? '💬 ' + escHtml(g.comment) : '<span style="color:var(--border)">—</span>'}</td>
               </tr>`;
             }).join("")}
           </tbody>
@@ -339,7 +340,7 @@
     reportData = data;
 
     const now = new Date().toLocaleDateString("en-GB", { year:"numeric", month:"long", day:"numeric" });
-    const statusColor = data.status === "Pass" ? "var(--green)" : data.status === "Fail" ? "var(--red)" : "var(--muted)";
+    const statusColor = data.status === "EE" || data.status === "ME" ? "var(--green)" : data.status === "AE" || data.status === "BE" ? "var(--red)" : "var(--muted)";
 
     document.getElementById("report-container").innerHTML = `
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:2rem;max-width:700px">
@@ -381,14 +382,15 @@
               <th style="text-align:left;padding:8px 12px;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);font-family:var(--font-mono)">Subject</th>
               <th style="text-align:left;padding:8px 12px;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);font-family:var(--font-mono)">Score</th>
               <th style="text-align:left;padding:8px 12px;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);font-family:var(--font-mono)">Percentage</th>
-              <th style="text-align:left;padding:8px 12px;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);font-family:var(--font-mono)">Grade</th>
+              <th style="text-align:left;padding:8px 12px;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);font-family:var(--font-mono)">Level</th>
               <th style="text-align:left;padding:8px 12px;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);font-family:var(--font-mono)">Date</th>
+              <th style="text-align:left;padding:8px 12px;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);font-family:var(--font-mono)">Feedback</th>
             </tr>
           </thead>
           <tbody>
             ${data.grades.map(g => {
               const pct  = Math.round((g.grade/g.max_grade)*100);
-              const letter = pct>=70?"A":pct>=60?"B":pct>=50?"C":pct>=40?"D":"F";
+              const letter = pct>=75?"EE":pct>=50?"ME":pct>=25?"AE":"BE";
               const date = g.created_at ? String(g.created_at).split("T")[0] : "—";
               return `<tr style="border-bottom:1px solid var(--border)">
                 <td style="padding:8px 12px;font-weight:600">${escHtml(g.subject)}</td>
@@ -396,6 +398,7 @@
                 <td style="padding:8px 12px;font-family:var(--font-mono);color:${pct>=50?'var(--green)':'var(--red)'}">${pct}%</td>
                 <td style="padding:8px 12px;font-family:var(--font-mono);font-weight:700;color:${pct>=50?'var(--green)':'var(--red)'}">${letter}</td>
                 <td style="padding:8px 12px;font-family:var(--font-mono);color:var(--muted);font-size:0.8rem">${date}</td>
+                <td style="padding:8px 12px;font-size:0.82rem;color:var(--muted);font-style:italic;max-width:180px">${g.comment ? '💬 ' + escHtml(g.comment) : '<span style="color:var(--border)">—</span>'}</td>
               </tr>`;
             }).join("")}
           </tbody>
@@ -440,7 +443,7 @@
       let y = 74;
       doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.setTextColor(80);
       doc.text("SUBJECT", 14, y); doc.text("SCORE", 80, y);
-      doc.text("PCT", 110, y); doc.text("GRADE", 130, y); doc.text("DATE", 158, y);
+      doc.text("PCT", 110, y); doc.text("LEVEL", 130, y); doc.text("DATE", 158, y);
       doc.setDrawColor(180); doc.line(14, y+2, 196, y+2); y += 8;
 
       doc.setFont("helvetica","normal"); doc.setTextColor(0); doc.setFontSize(10);
@@ -448,12 +451,12 @@
       grades.forEach(g => {
         if (y > 270) { doc.addPage(); y = 20; }
         const pct    = Math.round((Number(g.grade) / Number(g.max_grade)) * 100);
-        const letter = pct>=70?"A":pct>=60?"B":pct>=50?"C":pct>=40?"D":"F";
+        const letter = pct>=75?"EE":pct>=50?"ME":pct>=25?"AE":"BE";
         const date   = safeDate(g.created_at);
         doc.setTextColor(0);
         doc.text(safeStr(g.subject).substring(0,28), 14, y);
         doc.text(safeStr(g.grade)+"/"+safeStr(g.max_grade), 80, y);
-        doc.setTextColor(pct>=50?34:239, pct>=50?197:68, pct>=50?94:68);
+        doc.setTextColor(pct>=50?34:239, pct>=50?197:68, pct>=50?94:68); // CBC: ME+ is green
         doc.text(pct+"%", 110, y);
         doc.setTextColor(0); doc.setFont("helvetica","bold");
         doc.text(letter, 130, y);

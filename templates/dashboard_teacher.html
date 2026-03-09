@@ -67,7 +67,11 @@
         <div style="color:var(--muted);font-size:0.8rem;font-family:var(--font-mono)">Teacher Dashboard</div>
       </div>
       <span class="role-badge">👨‍🏫 Teacher</span>
-      <span class="subject-tag">{{ user.subject }}</span>
+      {% if user.subject %}
+        {% for subj in user.subject.split(',') %}
+          <span class="subject-tag" style="margin-right:4px">{{ subj.strip() }}</span>
+        {% endfor %}
+      {% endif %}
     </div>
     <div style="display:flex;gap:8px;align-items:center">
       <button class="theme-btn" id="theme-toggle" title="Toggle dark/light mode">🌙</button>
@@ -89,8 +93,8 @@
     <div class="stats-grid">
       <div class="stat-card"><span class="stat-label">My Students</span><span class="stat-value" id="val-total">—</span></div>
       <div class="stat-card accent"><span class="stat-label">Class Average</span><span class="stat-value" id="val-avg">—</span></div>
-      <div class="stat-card green"><span class="stat-label">Passing</span><span class="stat-value" id="val-pass">—</span></div>
-      <div class="stat-card red"><span class="stat-label">Failing</span><span class="stat-value" id="val-fail">—</span></div>
+      <div class="stat-card green"><span class="stat-label">ME & Above</span><span class="stat-value" id="val-pass">—</span></div>
+      <div class="stat-card red"><span class="stat-label">AE & Below</span><span class="stat-value" id="val-fail">—</span></div>
     </div>
     <div class="section-heading"><h2>Student Cards</h2><span class="badge" id="student-count-badge">0</span></div>
     <div id="student-cards" class="student-grid">
@@ -123,11 +127,16 @@
           <select id="grade-student"><option value="">— Choose a student —</option></select>
         </div>
         <div class="form-group"><label>Subject</label>
-          <input type="text" id="grade-subject" placeholder="Subject" readonly/>
+          <select id="grade-subject" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:11px 14px;color:var(--text);font-family:var(--font-display);font-size:0.9rem;outline:none;width:100%"></select>
         </div>
         <div class="form-row half">
           <div class="form-group"><label>Grade Scored</label><input type="number" id="grade-value" placeholder="e.g. 78" min="0"/></div>
           <div class="form-group"><label>Out of (Max)</label><input type="number" id="grade-max" placeholder="100" value="100" min="1"/></div>
+        </div>
+        <div class="form-group" style="margin-top:0.8rem">
+          <label>Feedback / Comment <span style="color:var(--muted);font-size:0.72rem;text-transform:none;letter-spacing:0">(optional)</span></label>
+          <textarea id="grade-comment" maxlength="500" placeholder="e.g. Good effort! Review chapter 3 for improvement." style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-family:var(--font-display);font-size:0.9rem;outline:none;width:100%;resize:vertical;min-height:72px;transition:border-color 0.2s" oninput="document.getElementById('grade-comment-count').textContent=500-this.value.length"></textarea>
+          <span id="grade-comment-count" style="font-size:0.72rem;font-family:var(--font-mono);color:var(--muted);float:right">500</span>
         </div>
       </div>
       <button class="btn-primary" id="add-grade-btn" style="margin-top:1rem">Save Grade</button>
@@ -199,7 +208,7 @@
 <!-- Edit Grade Modal -->
 <div class="modal-overlay" id="edit-modal">
   <div class="modal">
-    <h3>✏️ Edit Grade</h3>
+    <h3>✏️ Update Grade</h3>
     <input type="hidden" id="edit-grade-id"/>
     <div style="margin-bottom:1rem">
       <label class="modal-label">Subject</label>
@@ -215,8 +224,14 @@
         <input class="modal-input" id="edit-max-val" type="number" min="1" placeholder="100"/>
       </div>
     </div>
+    <div style="margin-bottom:1rem">
+      <label class="modal-label">Feedback / Comment <span style="color:var(--muted);font-size:0.7rem;text-transform:none;letter-spacing:0">(optional)</span></label>
+      <textarea class="modal-input" id="edit-comment" maxlength="500" placeholder="e.g. Well done! Keep it up." style="resize:vertical;min-height:68px;margin-top:4px" oninput="document.getElementById('edit-comment-count').textContent=500-this.value.length"></textarea>
+      <span id="edit-comment-count" style="font-size:0.72rem;font-family:var(--font-mono);color:var(--muted);float:right">500</span>
+    </div>
+    <div id="edit-modal-msg" style="display:none;background:rgba(247,96,79,0.1);border:1px solid rgba(247,96,79,0.3);color:#f7604f;border-radius:8px;padding:8px 12px;font-size:0.82rem;font-family:var(--font-mono);margin-bottom:0.8rem"></div>
     <div class="modal-actions">
-      <button class="btn-primary" onclick="saveEditGrade()">Save Changes</button>
+      <button class="btn-primary" id="save-edit-btn" onclick="saveEditGrade()">Update Grade</button>
       <button class="btn-danger" onclick="closeEditModal()">Cancel</button>
     </div>
   </div>
@@ -225,9 +240,18 @@
 <div id="toast" class="toast"></div>
 
 <script>
-  const SUBJECT = "{{ user.subject }}";
+  const SUBJECT_RAW = "{{ user.subject }}";
+  const SUBJECTS = SUBJECT_RAW ? SUBJECT_RAW.split(",").map(s=>s.trim()).filter(Boolean) : [];
   let passfailChart = null, distributionChart = null, averagesChart = null;
   let allStudents = [];
+
+  // Populate subject dropdown
+  function populateSubjectDropdown() {
+    const sel = document.getElementById("grade-subject");
+    sel.innerHTML = SUBJECTS.length
+      ? SUBJECTS.map(s => `<option value="${s}">${s}</option>`).join("")
+      : '<option value="">No subjects assigned</option>';
+  }
 
   // ── Dark/Light mode ──
   const themeBtn = document.getElementById("theme-toggle");
@@ -295,8 +319,8 @@
     allStudents = students;
     document.getElementById("val-total").textContent = stats.total_students || 0;
     document.getElementById("val-avg").textContent   = stats.overall_average ? stats.overall_average + "%" : "—";
-    document.getElementById("val-pass").textContent  = stats.passing_students || 0;
-    document.getElementById("val-fail").textContent  = stats.failing_students || 0;
+    document.getElementById("val-pass").textContent  = stats.meeting_students || 0;
+    document.getElementById("val-fail").textContent  = stats.below_students || 0;
     document.getElementById("student-count-badge").textContent = students.length;
 
     const container = document.getElementById("student-cards");
@@ -309,7 +333,7 @@
           <div class="sc-email">${escHtml(s.email)}</div>
         </div>
         <div style="margin-top:auto;padding-top:10px;display:flex;align-items:center;justify-content:space-between">
-          <span class="status-pill ${s.status==='Pass'?'pass':s.status==='Fail'?'fail':'none'}">${s.status}${s.average!==null?" · "+s.average+"%":""}</span>
+          <span class="status-pill ${s.status==='EE'||s.status==='ME'?'pass':s.status==='AE'||s.status==='BE'?'fail':'none'}">${s.status}${s.average!==null?" · "+s.average+"%":""}</span>
         </div>
       </div>`).join("");
   }
@@ -324,7 +348,7 @@
     const sel = document.getElementById("grade-student");
     sel.innerHTML = '<option value="">— Choose a student —</option>' +
       students.map(s => `<option value="${s.id}">${escHtml(s.name)}</option>`).join("");
-    document.getElementById("grade-subject").value = SUBJECT;
+    populateSubjectDropdown();
   }
 
   function renderStudentsTable(students) {
@@ -336,7 +360,7 @@
         <td style="font-weight:600">${escHtml(s.name)}</td>
         <td style="font-family:var(--font-mono);font-size:0.8rem;color:var(--muted)">${escHtml(s.email)}</td>
         <td style="font-family:var(--font-mono)">${s.average !== null ? '<span style="color:'+(s.average>=50?'var(--green)':'var(--red)')+'">'+s.average+'%</span>' : '<span style="color:var(--muted)">—</span>'}</td>
-        <td><span class="status-pill ${s.status==='Pass'?'pass':s.status==='Fail'?'fail':'none'}">${s.status}</span></td>
+        <td><span class="status-pill ${s.status==='EE'||s.status==='ME'?'pass':s.status==='AE'||s.status==='BE'?'fail':'none'}">${s.status}</span></td>
         <td><button class="btn-danger" onclick="deleteStudent(${s.id})">Delete</button></td>
       </tr>`).join("");
   }
@@ -361,7 +385,7 @@
     const sel = document.getElementById("grade-student");
     sel.innerHTML = '<option value="">— Choose a student —</option>' +
       students.map(s => `<option value="${s.id}">${escHtml(s.name)}</option>`).join("");
-    document.getElementById("grade-subject").value = SUBJECT;
+    populateSubjectDropdown();
 
     // Render grade cards
     const container = document.getElementById("grades-list");
@@ -371,13 +395,14 @@
       <div class="grade-record-card" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.2rem;margin-bottom:1rem">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.8rem">
           <div class="grc-name" style="font-weight:700;font-size:1rem">${escHtml(s.name)}</div>
-          <span class="status-pill ${s.status==='Pass'?'pass':s.status==='Fail'?'fail':'none'}">${s.status} ${s.average!==null?"· "+s.average+"%":""}</span>
+          <span class="status-pill ${s.status==='EE'||s.status==='ME'?'pass':s.status==='AE'||s.status==='BE'?'fail':'none'}">${s.status} ${s.average!==null?"· "+s.average+"%":""}</span>
         </div>
         <table class="grc-table" style="width:100%;border-collapse:collapse">
           <thead><tr style="color:var(--muted);font-size:0.75rem;font-family:var(--font-mono);text-transform:uppercase">
             <th style="text-align:left;padding:4px 8px">Subject</th>
             <th style="text-align:left;padding:4px 8px">Score</th>
             <th style="text-align:left;padding:4px 8px">Percentage</th>
+            <th style="text-align:left;padding:4px 8px">Feedback</th>
             <th style="text-align:left;padding:4px 8px">Edit</th>
             <th style="text-align:left;padding:4px 8px">Remove</th>
           </tr></thead>
@@ -386,7 +411,8 @@
             <td style="padding:6px 8px;font-weight:600">${escHtml(g.subject)}</td>
             <td style="padding:6px 8px;font-family:var(--font-mono)">${g.grade}/${g.max_grade}</td>
             <td style="padding:6px 8px;font-family:var(--font-mono);color:${pct>=50?'var(--green)':'var(--red)'}">${pct}%</td>
-            <td style="padding:6px 8px"><button class="btn-primary" onclick="openEditModal(${g.id},'${escHtml(g.subject)}',${g.grade},${g.max_grade})">Edit</button></td>
+            <td style="padding:6px 8px;max-width:200px">${g.comment ? `<span style="font-size:0.8rem;color:var(--muted);font-style:italic" title="${escHtml(g.comment)}">💬 ${escHtml(g.comment.length>40?g.comment.substring(0,40)+'…':g.comment)}</span>` : '<span style="color:var(--border);font-size:0.75rem;font-family:var(--font-mono)">—</span>'}</td>
+            <td style="padding:6px 8px"><button class="btn-primary" onclick="openEditModal(${g.id},'${escHtml(g.subject)}',${g.grade},${g.max_grade},${JSON.stringify(g.comment||'')})">Update Grade</button></td>
             <td style="padding:6px 8px"><button class="btn-danger" onclick="deleteGrade(${g.id})">Remove</button></td>
           </tr>`; }).join("")}
           </tbody>
@@ -395,11 +421,17 @@
   }
 
   // ── Edit modal ──
-  function openEditModal(id, subject, grade, maxGrade) {
+  function openEditModal(id, subject, grade, maxGrade, comment) {
     document.getElementById("edit-grade-id").value  = id;
     document.getElementById("edit-subject").value   = subject;
     document.getElementById("edit-grade-val").value = grade;
     document.getElementById("edit-max-val").value   = maxGrade;
+    document.getElementById("edit-comment").value   = comment || "";
+    document.getElementById("edit-comment-count").textContent = 500 - (comment ? comment.length : 0);
+    const msgEl = document.getElementById("edit-modal-msg");
+    msgEl.style.display = "none"; msgEl.textContent = "";
+    document.getElementById("save-edit-btn").textContent = "Update Grade";
+    document.getElementById("save-edit-btn").disabled = false;
     document.getElementById("edit-modal").classList.add("open");
   }
   function closeEditModal() { document.getElementById("edit-modal").classList.remove("open"); }
@@ -410,24 +442,56 @@
     const subject  = document.getElementById("edit-subject").value.trim();
     const grade    = parseFloat(document.getElementById("edit-grade-val").value);
     const maxGrade = parseFloat(document.getElementById("edit-max-val").value);
-    if (!subject || isNaN(grade) || isNaN(maxGrade)) { showToast("Please fill all fields","error"); return; }
-    const res = await api("PUT", "/api/grades/"+id, { subject, grade, max_grade: maxGrade });
-    if (res.error) { showToast(res.error,"error"); }
-    else { showToast("Grade updated!"); closeEditModal(); loadGradesTab(); loadOverview(); }
+    const comment  = document.getElementById("edit-comment").value.trim();
+    const msgEl    = document.getElementById("edit-modal-msg");
+    const btn      = document.getElementById("save-edit-btn");
+
+    // Clear previous error
+    msgEl.style.display = "none"; msgEl.textContent = "";
+
+    if (!id)                          { msgEl.textContent="Grade ID missing. Please close and try again."; msgEl.style.display="block"; return; }
+    if (!subject)                     { msgEl.textContent="Subject is required."; msgEl.style.display="block"; return; }
+    if (isNaN(grade) || grade < 0)    { msgEl.textContent="Please enter a valid grade score."; msgEl.style.display="block"; return; }
+    if (isNaN(maxGrade) || maxGrade < 1) { msgEl.textContent="Please enter a valid max grade."; msgEl.style.display="block"; return; }
+    if (grade > maxGrade)             { msgEl.textContent="Grade scored cannot exceed the max grade."; msgEl.style.display="block"; return; }
+
+    // Loading state
+    btn.textContent = "Saving...";
+    btn.disabled = true;
+
+    try {
+      const res = await api("PUT", "/api/grades/"+id, { subject, grade, max_grade: maxGrade, comment: comment || null });
+      if (res.error) {
+        msgEl.textContent = res.error;
+        msgEl.style.display = "block";
+        btn.textContent = "Update Grade";
+        btn.disabled = false;
+      } else {
+        showToast("Grade updated!");
+        closeEditModal();
+        loadGradesTab();
+        loadOverview();
+      }
+    } catch(err) {
+      msgEl.textContent = "Network error. Please try again.";
+      msgEl.style.display = "block";
+      btn.textContent = "Update Grade";
+      btn.disabled = false;
+    }
   }
 
   // ── Charts ──
   async function loadCharts() {
     const students = await api("GET", "/api/students");
     const withGrades = students.filter(s => s.average !== null);
-    const passing  = students.filter(s=>s.status==="Pass").length;
-    const failing  = students.filter(s=>s.status==="Fail").length;
+    const passing  = students.filter(s=>s.status==="EE"||s.status==="ME").length;
+    const failing  = students.filter(s=>s.status==="AE"||s.status==="BE").length;
     const noGrades = students.filter(s=>s.status==="No Grades").length;
 
     if (passfailChart) passfailChart.destroy();
     passfailChart = new Chart(document.getElementById("chart-passfail"), {
       type:"doughnut",
-      data:{ labels:["Pass","Fail","No Grades"], datasets:[{ data:[passing,failing,noGrades], backgroundColor:["#22c55e","#ef4444","#64748b"], borderWidth:0 }] },
+      data:{ labels:["EE","ME","AE","BE","No Grades"], datasets:[{ data:[students.filter(s=>s.status==="EE").length,students.filter(s=>s.status==="ME").length,students.filter(s=>s.status==="AE").length,students.filter(s=>s.status==="BE").length,noGrades], backgroundColor:["#22c55e","#4f8ef7","#e8c547","#ef4444","#64748b"], borderWidth:0 }] },
       options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ labels:{ color:"#94a3b8", font:{ family:"DM Mono" } } } } }
     });
 
@@ -477,7 +541,7 @@
         doc.text(safeStr(s.name).substring(0,28),24,y);
         doc.text(safeStr(s.email).substring(0,34),90,y);
         doc.text(s.average!==null?safeStr(s.average)+"%":"—",155,y);
-        doc.setTextColor(s.status==="Pass"?34:s.status==="Fail"?239:150, s.status==="Pass"?197:s.status==="Fail"?68:150, s.status==="Pass"?94:s.status==="Fail"?68:150);
+        doc.setTextColor((s.status==="EE"||s.status==="ME")?34:((s.status==="AE"||s.status==="BE")?239:150), (s.status==="EE"||s.status==="ME")?197:((s.status==="AE"||s.status==="BE")?68:150), (s.status==="EE"||s.status==="ME")?94:((s.status==="AE"||s.status==="BE")?68:150));
         doc.text(safeStr(s.status),178,y);
         doc.setTextColor(0); y+=7;
       });
@@ -495,11 +559,12 @@
     const subject    = document.getElementById("grade-subject").value.trim();
     const grade      = document.getElementById("grade-value").value;
     const max_grade  = document.getElementById("grade-max").value || 100;
+    const comment    = document.getElementById("grade-comment").value.trim();
     const msg        = document.getElementById("grade-msg");
-    if (!student_id||!subject||grade==="") { msg.textContent="Please fill in all fields."; msg.className="msg error"; return; }
-    const res = await api("POST","/api/grades",{student_id:parseInt(student_id),subject,grade:parseFloat(grade),max_grade:parseFloat(max_grade)});
+    if (!student_id||!subject||grade==="") { msg.textContent="Please fill in all required fields."; msg.className="msg error"; return; }
+    const res = await api("POST","/api/grades",{student_id:parseInt(student_id),subject,grade:parseFloat(grade),max_grade:parseFloat(max_grade),comment:comment||null});
     if (res.error) { msg.textContent=res.error; msg.className="msg error"; }
-    else { msg.textContent="✓ Grade saved!"; msg.className="msg success"; document.getElementById("grade-value").value=""; document.getElementById("grade-max").value="100"; showToast("Grade saved!"); loadGradesTab(); loadOverview(); }
+    else { msg.textContent="✓ Grade saved!"; msg.className="msg success"; document.getElementById("grade-value").value=""; document.getElementById("grade-max").value="100"; document.getElementById("grade-comment").value=""; showToast("Grade saved!"); loadGradesTab(); loadOverview(); }
   });
 
   // ── Delete student ──
@@ -536,6 +601,7 @@
   async function logout() { await api("POST","/api/logout"); window.location.href="/login"; }
 
   loadOverview();
+  populateSubjectDropdown();
 </script>
 </body>
 </html>

@@ -103,8 +103,13 @@
             </button>
           </div>
         </div>
-        <div class="form-group"><label>Subject</label><input type="text" id="t-subject" placeholder="e.g. Mathematics"/></div>
-        <button class="btn-primary" onclick="addTeacher()">Add Teacher</button>
+        <div class="form-group" style="grid-column:1/-1">
+          <label>Subjects <span style="color:var(--muted);font-size:0.72rem;text-transform:none;letter-spacing:0;font-family:var(--font-display)">(select one or more)</span></label>
+          <div id="subject-checkboxes" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;margin-top:8px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px">
+            <!-- populated by JS -->
+          </div>
+        </div>
+        <button class="btn-primary" onclick="addTeacher()" style="align-self:flex-end">Add Teacher</button>
       </div>
       <div id="teacher-msg" class="msg"></div>
     </div>
@@ -201,6 +206,23 @@
   </div>
 
 </main>
+<!-- Subject Editor Modal -->
+<div class="modal-overlay" id="subject-editor-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:2rem;width:100%;max-width:480px;margin:1rem;animation:fadeUp 0.2s ease">
+    <h3 style="font-size:1.1rem;font-weight:800;margin-bottom:0.4rem">✏️ Edit Subjects</h3>
+    <p id="subject-editor-name" style="color:var(--muted);font-size:0.82rem;font-family:var(--font-mono);margin-bottom:1.2rem"></p>
+    <input type="hidden" id="subject-editor-teacher-id"/>
+    <div id="subject-editor-checkboxes" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:1rem">
+      <!-- populated by JS -->
+    </div>
+    <div id="subject-editor-msg" style="display:none;color:#f7604f;font-size:0.82rem;font-family:var(--font-mono);margin-bottom:0.8rem"></div>
+    <div style="display:flex;gap:10px">
+      <button class="btn-primary" style="flex:1" onclick="saveTeacherSubjects()">Save Subjects</button>
+      <button class="btn-danger" style="flex:1" onclick="closeSubjectEditor()">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast" class="toast"></div>
 <script>
   let allTeachers = [], allStudents = [];
@@ -235,7 +257,7 @@
       btn.classList.add("active");
       document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
       if (btn.dataset.tab === "overview")  loadOverview();
-      if (btn.dataset.tab === "teachers")  loadTeachers();
+      if (btn.dataset.tab === "teachers")  { loadTeachers(); loadSubjectCheckboxes(); }
       if (btn.dataset.tab === "students")  loadStudents();
       if (btn.dataset.tab === "charts")    loadCharts();
       if (btn.dataset.tab === "report")    loadSchoolReport();
@@ -288,7 +310,12 @@
         <td style="font-weight:600">${escHtml(t.fullname)}</td>
         <td style="font-family:var(--font-mono)">${escHtml(t.username)}</td>
         <td style="font-family:var(--font-mono);font-size:0.8rem;color:var(--muted)">${escHtml(t.email)}</td>
-        <td><span class="subject-chip">${escHtml(t.subject||'—')}</span></td>
+        <td style="max-width:240px">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            ${t.subject ? t.subject.split(',').map(s=>`<span class="subject-chip" style="display:inline-block;margin:2px 2px">${escHtml(s.trim())}</span>`).join('') : '<span style="color:var(--muted);font-size:0.8rem">—</span>'}
+            <button class="btn-primary" style="padding:3px 10px;font-size:0.75rem;white-space:nowrap" onclick="openSubjectEditor(${t.id}, '${escHtml(t.fullname)}', '${escHtml(t.subject||'')}')">✏️ Edit</button>
+          </div>
+        </td>
         <td><button class="btn-danger" onclick="deleteTeacher(${t.id})">Delete</button></td>
         <td><button class="btn-primary" onclick="resetPassword(${t.id},'${escHtml(t.username)}')">Reset PW</button></td>
       </tr>`).join("");
@@ -320,7 +347,7 @@
         <td style="font-weight:600">${escHtml(s.name)}</td>
         <td style="font-family:var(--font-mono);font-size:0.8rem;color:var(--muted)">${escHtml(s.email)}</td>
         <td style="font-family:var(--font-mono)">${s.average !== null ? '<span style="color:'+(s.average>=50?'var(--green)':'var(--red)')+'">'+s.average+'%</span>' : '<span style="color:var(--muted)">—</span>'}</td>
-        <td><span class="status-pill ${s.status==='Pass'?'pass':s.status==='Fail'?'fail':'none'}">${s.status}</span></td>
+        <td><span class="status-pill ${s.status==='EE'||s.status==='ME'?'pass':s.status==='AE'||s.status==='BE'?'fail':'none'}">${s.status}</span></td>
         <td><button class="btn-primary" onclick="resetStudentPassword('${escHtml(s.email)}','${escHtml(s.name)}')">Reset PW</button></td>
       </tr>`).join("");
   }
@@ -360,7 +387,7 @@
         doc.text(safeStr(s.name).substring(0,28),24,y);
         doc.text(safeStr(s.email).substring(0,34),90,y);
         doc.text(s.average!==null?safeStr(s.average)+"%":"—",155,y);
-        doc.setTextColor(s.status==="Pass"?34:s.status==="Fail"?239:150, s.status==="Pass"?197:s.status==="Fail"?68:150, s.status==="Pass"?94:s.status==="Fail"?68:150);
+        doc.setTextColor((s.status==="EE"||s.status==="ME")?34:((s.status==="AE"||s.status==="BE")?239:150), (s.status==="EE"||s.status==="ME")?197:((s.status==="AE"||s.status==="BE")?68:150), (s.status==="EE"||s.status==="ME")?94:((s.status==="AE"||s.status==="BE")?68:150));
         doc.text(safeStr(s.status),178,y);
         doc.setTextColor(0); y+=7;
       });
@@ -375,14 +402,20 @@
   // ── Charts ──
   async function loadCharts() {
     const students = await api("GET", "/api/students");
-    const passing  = students.filter(s=>s.status==="Pass").length;
-    const failing  = students.filter(s=>s.status==="Fail").length;
+    const passing  = students.filter(s=>s.status==="EE"||s.status==="ME").length;
+    const failing  = students.filter(s=>s.status==="AE"||s.status==="BE").length;
     const noGrades = students.filter(s=>s.status==="No Grades").length;
 
     if (passfailChart) passfailChart.destroy();
     passfailChart = new Chart(document.getElementById("chart-passfail"), {
       type:"doughnut",
-      data:{ labels:["Pass","Fail","No Grades"], datasets:[{ data:[passing,failing,noGrades], backgroundColor:["#22c55e","#ef4444","#64748b"], borderWidth:0 }] },
+      data:{ labels:["EE","ME","AE","BE","No Grades"], datasets:[{ data:[
+        students.filter(s=>s.status==="EE").length,
+        students.filter(s=>s.status==="ME").length,
+        students.filter(s=>s.status==="AE").length,
+        students.filter(s=>s.status==="BE").length,
+        noGrades
+      ], backgroundColor:["#22c55e","#4f8ef7","#e8c547","#ef4444","#64748b"], borderWidth:0 }] },
       options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ labels:{ color:"#94a3b8", font:{ family:"DM Mono" } } } } }
     });
 
@@ -412,7 +445,7 @@
   async function loadSchoolReport() {
     const data = await api("GET", "/api/admin/school-report");
     const now  = new Date().toLocaleDateString("en-GB", { year:"numeric", month:"long", day:"numeric" });
-    const passRate = data.total_students ? Math.round((data.passing/data.total_students)*100) : 0;
+    const passRate = data.total_students ? Math.round(((data.passing)/data.total_students)*100) : 0;
 
     document.getElementById("report-container").innerHTML = `
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:2rem;max-width:800px">
@@ -423,7 +456,7 @@
           </div>
           <div style="text-align:right;font-family:var(--font-mono);font-size:0.78rem;color:var(--muted)">
             <div>Date: ${now}</div>
-            <div>Pass Rate: <span style="color:var(--green);font-weight:700">${passRate}%</span></div>
+            <div>ME+ Rate: <span style="color:var(--green);font-weight:700">${passRate}%</span></div>
           </div>
         </div>
 
@@ -441,7 +474,7 @@
             <div style="font-size:1.6rem;font-weight:800;color:${data.overall_average>=50?'var(--green)':'var(--red)'}">${data.overall_average}%</div>
           </div>
           <div style="background:var(--surface2);border-radius:8px;padding:1rem;text-align:center">
-            <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);font-family:var(--font-mono)">Passing</div>
+            <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);font-family:var(--font-mono)">ME & Above</div>
             <div style="font-size:1.6rem;font-weight:800;color:var(--green)">${data.passing}</div>
           </div>
         </div>
@@ -464,7 +497,7 @@
                 <td style="padding:8px 12px;font-weight:600">${escHtml(s.name)}</td>
                 <td style="padding:8px 12px;font-family:var(--font-mono);font-size:0.8rem;color:var(--muted)">${escHtml(s.email)}</td>
                 <td style="padding:8px 12px;font-family:var(--font-mono);color:${s.average!==null?(s.average>=50?'var(--green)':'var(--red)'):'var(--muted)'}">${s.average!==null?s.average+"%":"—"}</td>
-                <td style="padding:8px 12px"><span class="status-pill ${s.status==='Pass'?'pass':s.status==='Fail'?'fail':'none'}">${s.status}</span></td>
+                <td style="padding:8px 12px"><span class="status-pill ${s.status==='EE'||s.status==='ME'?'pass':s.status==='AE'||s.status==='BE'?'fail':'none'}">${s.status}</span></td>
                 <td style="padding:8px 12px;font-family:var(--font-mono)">${s.total_grades}</td>
               </tr>`).join("")}
           </tbody>
@@ -499,7 +532,7 @@
         doc.text(safeStr(s.name).substring(0,28),24,y);
         doc.text(safeStr(s.email).substring(0,32),90,y);
         doc.text(s.average!==null?safeStr(s.average)+"%":"—",152,y);
-        doc.setTextColor(s.status==="Pass"?34:s.status==="Fail"?239:150, s.status==="Pass"?197:s.status==="Fail"?68:150, s.status==="Pass"?94:s.status==="Fail"?68:150);
+        doc.setTextColor((s.status==="EE"||s.status==="ME")?34:((s.status==="AE"||s.status==="BE")?239:150), (s.status==="EE"||s.status==="ME")?197:((s.status==="AE"||s.status==="BE")?68:150), (s.status==="EE"||s.status==="ME")?94:((s.status==="AE"||s.status==="BE")?68:150));
         doc.text(safeStr(s.status),175,y);
         doc.setTextColor(0); y+=7;
       });
@@ -512,19 +545,38 @@
   }
 
   // ── Add teacher ──
+  // ── Load CBC subjects into checkboxes ──
+  async function loadSubjectCheckboxes() {
+    const subjects = await api("GET", "/api/cbc-subjects");
+    const container = document.getElementById("subject-checkboxes");
+    container.innerHTML = subjects.map(s => `
+      <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer;padding:4px 6px;border-radius:6px;transition:background 0.15s" onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background=''">
+        <input type="checkbox" name="t-subject" value="${escHtml(s)}" style="accent-color:var(--accent);width:15px;height:15px;cursor:pointer"/>
+        ${escHtml(s)}
+      </label>`).join("");
+  }
+
   async function addTeacher() {
     const msg = document.getElementById("teacher-msg");
     const email = document.getElementById("t-email").value.trim();
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) { msg.textContent="Please enter a valid email."; msg.className="msg error"; return; }
+
+    const checked = [...document.querySelectorAll('input[name="t-subject"]:checked')].map(cb => cb.value);
+    if (!checked.length) { msg.textContent="Please select at least one subject."; msg.className="msg error"; return; }
+
     const res = await api("POST", "/api/admin/teachers", {
       fullname: document.getElementById("t-name").value.trim(),
       username: document.getElementById("t-username").value.trim(),
       email, password: document.getElementById("t-password").value,
-      subject:  document.getElementById("t-subject").value.trim()
+      subject: checked.join(",")
     });
     if (res.error) { msg.textContent=res.error; msg.className="msg error"; }
-    else { msg.textContent="✓ Teacher added!"; msg.className="msg success"; showToast("Teacher added!"); loadTeachers(); loadOverview(); }
+    else {
+      msg.textContent="✓ Teacher added!"; msg.className="msg success";
+      showToast("Teacher added!"); loadTeachers(); loadOverview();
+      document.querySelectorAll('input[name="t-subject"]').forEach(cb => cb.checked = false);
+    }
   }
 
   async function deleteTeacher(id) {
@@ -565,7 +617,68 @@
 
   async function logout() { await api("POST","/api/logout"); window.location.href="/login"; }
 
+  // ── Subject Editor Modal ──
+  let cbcSubjectsList = [];
+
+  async function openSubjectEditor(teacherId, teacherName, currentSubjects) {
+    document.getElementById("subject-editor-teacher-id").value = teacherId;
+    document.getElementById("subject-editor-name").textContent = "Teacher: " + teacherName;
+    const msgEl = document.getElementById("subject-editor-msg");
+    msgEl.style.display = "none"; msgEl.textContent = "";
+
+    // Load CBC subjects if not already loaded
+    if (!cbcSubjectsList.length) {
+      cbcSubjectsList = await api("GET", "/api/cbc-subjects");
+    }
+
+    const current = currentSubjects ? currentSubjects.split(",").map(s => s.trim()) : [];
+    const container = document.getElementById("subject-editor-checkboxes");
+    container.innerHTML = cbcSubjectsList.map(s => `
+      <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer;padding:4px 6px;border-radius:6px;transition:background 0.15s" onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background=''">
+        <input type="checkbox" name="edit-subject" value="${escHtml(s)}" ${current.includes(s) ? 'checked' : ''} style="accent-color:var(--accent);width:15px;height:15px;cursor:pointer"/>
+        ${escHtml(s)}
+      </label>`).join("");
+
+    const modal = document.getElementById("subject-editor-modal");
+    modal.style.display = "flex";
+  }
+
+  function closeSubjectEditor() {
+    document.getElementById("subject-editor-modal").style.display = "none";
+  }
+
+  // Close on backdrop click
+  document.getElementById("subject-editor-modal").addEventListener("click", function(e) {
+    if (e.target === this) closeSubjectEditor();
+  });
+
+  async function saveTeacherSubjects() {
+    const teacherId = document.getElementById("subject-editor-teacher-id").value;
+    const checked = [...document.querySelectorAll('input[name="edit-subject"]:checked')].map(cb => cb.value);
+    const msgEl = document.getElementById("subject-editor-msg");
+
+    if (!checked.length) {
+      msgEl.textContent = "Please select at least one subject.";
+      msgEl.style.display = "block";
+      return;
+    }
+
+    const res = await api("PATCH", "/api/admin/teachers/" + teacherId + "/subjects", {
+      subject: checked.join(",")
+    });
+
+    if (res.error) {
+      msgEl.textContent = res.error;
+      msgEl.style.display = "block";
+    } else {
+      showToast("Subjects updated!");
+      closeSubjectEditor();
+      loadTeachers();
+    }
+  }
+
   loadOverview();
+  loadSubjectCheckboxes();
 </script>
 </body>
 </html>

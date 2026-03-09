@@ -64,11 +64,17 @@ def init_db():
             subject TEXT NOT NULL,
             grade REAL NOT NULL,
             max_grade REAL DEFAULT 100,
+            comment TEXT,
             teacher_id INTEGER,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
             FOREIGN KEY (teacher_id) REFERENCES users(id)
         )
+    """)
+
+    # Add comment column if it doesn't exist (for existing databases)
+    cursor.execute("""
+        ALTER TABLE grades ADD COLUMN IF NOT EXISTS comment TEXT
     """)
 
     conn.commit()
@@ -562,9 +568,13 @@ def add_grade():
     subject    = data.get("subject", "").strip()
     grade      = data.get("grade")
     max_grade  = data.get("max_grade", 100)
+    comment    = data.get("comment", "").strip() if data.get("comment") else None
 
     if not student_id or not subject or grade is None:
         return jsonify({"error": "student_id, subject, and grade are required"}), 400
+
+    if comment and len(comment) > 500:
+        return jsonify({"error": "Comment must be 500 characters or less"}), 400
 
     if not (0 <= float(grade) <= float(max_grade)):
         return jsonify({"error": "Grade must be between 0 and max_grade"}), 400
@@ -572,9 +582,9 @@ def add_grade():
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute("""
-        INSERT INTO grades (student_id, subject, grade, max_grade, teacher_id)
-        VALUES (%s, %s, %s, %s, %s)
-    """, (student_id, subject, grade, max_grade, user["id"]))
+        INSERT INTO grades (student_id, subject, grade, max_grade, comment, teacher_id)
+        VALUES (%s, %s, %s, %s, %s, %s)
+    """, (student_id, subject, grade, max_grade, comment, user["id"]))
     conn.commit()
     cursor.close()
     conn.close()
@@ -673,6 +683,7 @@ def edit_grade(grade_id):
     grade     = data.get("grade")
     max_grade = data.get("max_grade")
     subject   = data.get("subject", "").strip()
+    comment   = data.get("comment")  # None means "don't change", "" means "clear it"
 
     if grade is None:
         return jsonify({"error": "Grade is required"}), 400
@@ -697,6 +708,14 @@ def edit_grade(grade_id):
     if subject:
         updates.append("subject = %s")
         values.append(subject)
+    if comment is not None:
+        updates.append("comment = %s")
+        stripped = comment.strip() if comment else None
+        if stripped and len(stripped) > 500:
+            cursor.close()
+            conn.close()
+            return jsonify({"error": "Comment must be 500 characters or less"}), 400
+        values.append(stripped)
 
     values.append(grade_id)
     cursor.execute(f"UPDATE grades SET {', '.join(updates)} WHERE id = %s", values)
