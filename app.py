@@ -28,7 +28,7 @@ app.secret_key = "gradevault_secret_key_2024"
 # EMAIL CONFIG (Gmail SMTP)
 # ============================================================
 MAIL_HOST     = "smtp.gmail.com"
-MAIL_PORT     = 587
+MAIL_PORT     = 465
 MAIL_USERNAME = os.environ.get("MAIL_USERNAME", "fidelclinton4@gmail.com")
 MAIL_PASSWORD = os.environ.get("MAIL_PASSWORD", "fdhrpdgpjwgbmkws")
 MAIL_FROM     = os.environ.get("MAIL_USERNAME", "fidelclinton4@gmail.com")
@@ -58,11 +58,9 @@ def send_reset_email(to_email, token):
     print(f"[EMAIL DEBUG] MAIL_PASSWORD set: {'yes' if MAIL_PASSWORD else 'NO - EMPTY!'}")
     print(f"[EMAIL DEBUG] APP_BASE_URL: {APP_BASE_URL}")
 
-    with smtplib.SMTP(MAIL_HOST, MAIL_PORT) as server:
-        server.set_debuglevel(1)
-        server.starttls()
-        server.login(MAIL_USERNAME, MAIL_PASSWORD)
-        server.sendmail(MAIL_FROM, to_email, msg.as_string())
+    with smtplib.SMTP_SSL(MAIL_HOST, MAIL_PORT) as server:
+    server.login(MAIL_USERNAME, MAIL_PASSWORD)
+    server.sendmail(MAIL_FROM, to_email, msg.as_string())
     print(f"[EMAIL DEBUG] Email sent successfully to {to_email}")
 
 # ============================================================
