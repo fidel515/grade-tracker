@@ -25,14 +25,6 @@ def test_email():
     except Exception as e:
         return f"EMAIL FAILED: {type(e).__name__}: {e}"
 
-@app.route("/test-email")
-def test_email():
-    try:
-        send_reset_email("fidelclinton4@gmail.com", "testtoken123")
-        return "EMAIL SENT OK"
-    except Exception as e:
-        return f"EMAIL FAILED: {type(e).__name__}: {e}"
-
 # ============================================================
 # EMAIL CONFIG (Gmail SMTP)
 # ============================================================
