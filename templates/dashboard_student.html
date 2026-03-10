@@ -205,7 +205,7 @@
 
   function safeDate(val) {
     if (!val) return "—";
-    return String(val).replace("T"," ").split(" ")[0];
+    return String(val);
   }
 
   function safeStr(val) {
@@ -259,7 +259,7 @@
           <tbody>
             ${grades.map(g => {
               const pct  = Math.round((g.grade / g.max_grade) * 100);
-              const date = g.created_at ? String(g.created_at).split("T")[0] : "—";
+              const date = g.date_added || "—";
               return `<tr>
                 <td style="font-family:var(--font-mono);font-weight:700">${g.grade}</td>
                 <td style="font-family:var(--font-mono)">${g.max_grade}</td>
@@ -321,7 +321,7 @@
 
     // Timeline chart — all grades sorted by date
     const sorted = [...data.grades].sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
-    const tlLabels = sorted.map(g => escHtml(g.subject) + " " + String(g.created_at).split("T")[0]);
+    const tlLabels = sorted.map(g => escHtml(g.subject) + " " + (g.date_added || "—"));
     const tlData   = sorted.map(g => Math.round((g.grade/g.max_grade)*100));
 
     if (timelineChart) timelineChart.destroy();
@@ -391,7 +391,7 @@
             ${data.grades.map(g => {
               const pct  = Math.round((g.grade/g.max_grade)*100);
               const letter = pct>=75?"EE":pct>=50?"ME":pct>=25?"AE":"BE";
-              const date = g.created_at ? String(g.created_at).split("T")[0] : "—";
+              const date = g.date_added || "—";
               return `<tr style="border-bottom:1px solid var(--border)">
                 <td style="padding:8px 12px;font-weight:600">${escHtml(g.subject)}</td>
                 <td style="padding:8px 12px;font-family:var(--font-mono)">${g.grade}/${g.max_grade}</td>
@@ -452,7 +452,7 @@
         if (y > 270) { doc.addPage(); y = 20; }
         const pct    = Math.round((Number(g.grade) / Number(g.max_grade)) * 100);
         const letter = pct>=75?"EE":pct>=50?"ME":pct>=25?"AE":"BE";
-        const date   = safeDate(g.created_at);
+        const date   = g.date_added || "—";
         doc.setTextColor(0);
         doc.text(safeStr(g.subject).substring(0,28), 14, y);
         doc.text(safeStr(g.grade)+"/"+safeStr(g.max_grade), 80, y);
