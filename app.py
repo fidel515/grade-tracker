@@ -17,6 +17,10 @@ from datetime import datetime, timedelta
 app = Flask(__name__)
 app.secret_key = "gradevault_secret_key_2024"
 
+# Session expires when browser is closed (no persistent cookie)
+app.config["SESSION_PERMANENT"] = False
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(hours=8)
+
 @app.route("/test-email")
 def test_email():
     try:
@@ -826,6 +830,19 @@ def add_grade():
 
     conn = get_db()
     cursor = conn.cursor()
+
+    # Prevent teachers from adding duplicate subject grade for same student
+    if user["role"] == "teacher":
+        cursor.execute("""
+            SELECT id FROM grades
+            WHERE student_id = %s AND subject = %s AND teacher_id = %s
+        """, (student_id, subject, user["id"]))
+        existing = cursor.fetchone()
+        if existing:
+            cursor.close()
+            conn.close()
+            return jsonify({"error": f"You have already added a grade for '{subject}' for this student. Please use the edit option to update it."}), 409
+
     cursor.execute("""
         INSERT INTO grades (student_id, subject, grade, max_grade, comment, teacher_id)
         VALUES (%s, %s, %s, %s, %s, %s)
@@ -834,7 +851,6 @@ def add_grade():
     cursor.close()
     conn.close()
     return jsonify({"message": "Grade added"}), 201
-
 
 @app.route("/api/grades/<int:grade_id>", methods=["DELETE"])
 def delete_grade(grade_id):
@@ -1089,8 +1105,26 @@ def my_report():
         ORDER BY g.created_at DESC
     """, (student["id"],))
     grade_list = [dict(g) for g in cursor.fetchall()]
+
+    # Fix 2: Format dates as DD/MM/YYYY (Kenyan format)
+    for g in grade_list:
+        if g.get("created_at"):
+            g["date_added"] = g["created_at"].strftime("%d/%m/%Y")
+        else:
+            g["date_added"] = "—"
+
     avg    = round(sum(g["grade"] for g in grade_list) / len(grade_list), 2) if grade_list else None
     status = cbc_status(avg)
+
+    # Fix 4: Sort by official KNEC/MoE CBC subject order
+    KNEC_ORDER = [
+        "English", "Kiswahili", "Mathematics", "Integrated Science",
+        "Social Studies", "Religious Education (CRE)", "Religious Education (IRE)",
+        "Religious Education (HRE)", "Pre-Technical Studies", "Business Studies",
+        "Agriculture", "Nutrition & Home Science", "Computer Studies",
+        "Creative Arts & Sports",
+    ]
+    grade_list.sort(key=lambda g: KNEC_ORDER.index(g["subject"]) if g["subject"] in KNEC_ORDER else len(KNEC_ORDER))
 
     # Subject breakdown
     subjects = {}
