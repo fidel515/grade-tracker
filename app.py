@@ -2,6 +2,11 @@
 # app.py — GradeVault Backend (PostgreSQL version)
 # ============================================================
 
+import sys
+import logging
+# Force unbuffered output so logs appear in Render immediately
+logging.basicConfig(level=logging.INFO, stream=sys.stderr, force=True)
+
 from flask import Flask, request, jsonify, render_template, session, redirect, url_for
 from werkzeug.security import generate_password_hash, check_password_hash
 import psycopg2
@@ -63,10 +68,10 @@ def send_reset_email(to_email, token):
     msg.attach(MIMEText(text, "plain"))
     msg.attach(MIMEText(html, "html"))
 
-    print(f"[EMAIL DEBUG] Attempting to send to: {to_email}")
-    print(f"[EMAIL DEBUG] MAIL_USERNAME: {MAIL_USERNAME}")
-    print(f"[EMAIL DEBUG] MAIL_PASSWORD set: {'yes' if MAIL_PASSWORD else 'NO - EMPTY!'}")
-    print(f"[EMAIL DEBUG] Reset link: {reset_link}")
+    logging.info(f"[EMAIL DEBUG] Attempting to send to: {to_email}")
+    logging.info(f"[EMAIL DEBUG] MAIL_USERNAME: {MAIL_USERNAME}")
+    logging.info(f"[EMAIL DEBUG] MAIL_PASSWORD set: {'yes' if MAIL_PASSWORD else 'NO - EMPTY!'}")
+    logging.info(f"[EMAIL DEBUG] Reset link: {reset_link}")
 
     try:
         with smtplib.SMTP(MAIL_HOST, MAIL_PORT, timeout=15) as server:
@@ -75,15 +80,15 @@ def send_reset_email(to_email, token):
             server.ehlo()
             server.login(MAIL_USERNAME, MAIL_PASSWORD)
             server.sendmail(MAIL_FROM, to_email, msg.as_string())
-        print(f"[EMAIL DEBUG] Email sent successfully to {to_email}")
+        logging.info(f"[EMAIL DEBUG] Email sent successfully to {to_email}")
     except smtplib.SMTPAuthenticationError:
         print("[EMAIL ERROR] Authentication failed - check Gmail app password")
         raise Exception("Email authentication failed. Please contact the administrator.")
     except smtplib.SMTPException as e:
-        print(f"[EMAIL ERROR] SMTP error: {e}")
+        logging.error(f"[EMAIL ERROR] SMTP error: {e}")
         raise Exception(f"Email sending failed: {str(e)}")
     except Exception as e:
-        print(f"[EMAIL ERROR] Unexpected error: {e}")
+        logging.error(f"[EMAIL ERROR] Unexpected error: {e}")
         raise
 
 # ============================================================
@@ -270,7 +275,7 @@ def reset_password_page():
 def forgot_password():
     data  = request.get_json()
     email = data.get("email", "").strip().lower()
-    print(f"[RESET] Forgot password request for: {email}")
+    logging.info(f"[RESET] Forgot password request for: {email}")
     if not email:
         return jsonify({"error": "Email is required"}), 400
 
@@ -280,11 +285,11 @@ def forgot_password():
     user = cursor.fetchone()
 
     if not user:
-        print(f"[RESET] No user found for email: {email}")
+        logging.info(f"[RESET] No user found for email: {email}")
         cursor.close(); conn.close()
         return jsonify({"message": "If that email exists, a reset link has been sent."})
 
-    print(f"[RESET] User found: {user['fullname']} ({user['email']})")
+    logging.info(f"[RESET] User found: {user['fullname']} ({user['email']})")
 
     # Generate secure token, expires in 30 minutes
     token      = secrets.token_urlsafe(48)
@@ -299,12 +304,12 @@ def forgot_password():
     conn.commit()
     cursor.close(); conn.close()
 
-    print(f"[RESET] Token generated, attempting to send email to {user['email']}")
+    logging.info(f"[RESET] Token generated, attempting to send email to {user['email']}")
     try:
         send_reset_email(user["email"], token)
-        print(f"[RESET] Email sent successfully to {user['email']}")
+        logging.info(f"[RESET] Email sent successfully to {user['email']}")
     except Exception as e:
-        print(f"[EMAIL ERROR] {type(e).__name__}: {e}")
+        logging.error(f"[EMAIL ERROR] {type(e).__name__}: {e}")
         return jsonify({"error": f"Email failed: {str(e)}"}), 500
 
     return jsonify({"message": "If that email exists, a reset link has been sent."})
