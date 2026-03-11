@@ -7,278 +7,187 @@
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="/static/css/style.css"/>
   <style>
-    /* ── Login page specific styles ── */
-
-    /* Center everything on the screen */
-    .auth-wrapper {
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 2rem;
-    }
-
-    /* The white/dark card in the middle */
-    .auth-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 2.5rem;
-      width: 100%;
-      max-width: 420px;
-    }
-
-    /* Logo at the top of the card */
-    .auth-logo {
-      text-align: center;
-      margin-bottom: 2rem;
-    }
-    .auth-logo .logo-icon {
-      font-size: 2.5rem;
-      color: var(--accent);
-      display: block;
-      margin-bottom: 8px;
-    }
-    .auth-logo h1 {
-      font-size: 1.8rem;
-      font-weight: 800;
-      letter-spacing: -0.04em;
-    }
-    .auth-logo p {
-      color: var(--muted);
-      font-size: 0.85rem;
-      margin-top: 4px;
-    }
-
-    /* Each input group */
-    .auth-group {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      margin-bottom: 1.2rem;
-    }
-    .auth-group label {
-      font-size: 0.75rem;
-      font-weight: 600;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      color: var(--muted);
-      font-family: var(--font-mono);
-    }
-    .auth-group input {
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 12px 14px;
-      color: var(--text);
-      font-family: var(--font-display);
-      font-size: 0.95rem;
-      outline: none;
-      transition: border-color 0.2s;
-      width: 100%;
-    }
-    .auth-group input:focus {
-      border-color: var(--accent);
-    }
-
-    /* Full width login button */
-    .auth-btn {
-      width: 100%;
-      background: var(--accent);
-      color: #0d0f14;
-      border: none;
-      border-radius: 8px;
-      padding: 13px;
-      font-family: var(--font-display);
-      font-size: 0.95rem;
-      font-weight: 700;
-      cursor: pointer;
-      transition: background 0.2s;
-      margin-top: 0.5rem;
-    }
-    .auth-btn:hover {
-      background: #f5d454;
-    }
-
-    /* Error message shown when login fails */
-    .auth-error {
-      background: rgba(247,96,79,0.1);
-      border: 1px solid rgba(247,96,79,0.3);
-      color: var(--red);
-      border-radius: 8px;
-      padding: 10px 14px;
-      font-size: 0.82rem;
-      font-family: var(--font-mono);
-      margin-bottom: 1rem;
-      display: none; /* hidden by default, shown by JavaScript */
-    }
-    .auth-error.show {
-      display: block;
-    }
-
-    /* Link at the bottom to go to register page */
-    .auth-footer {
-      text-align: center;
-      margin-top: 1.5rem;
-      font-size: 0.82rem;
-      color: var(--muted);
-    }
-    .auth-footer a {
-      color: var(--accent);
-      text-decoration: none;
-      font-weight: 600;
-    }
-    .auth-footer a:hover {
-      text-decoration: underline;
-    }
-
-    /* Role badges shown at the bottom as a hint */
-    .role-hints {
-      display: flex;
-      gap: 8px;
-      justify-content: center;
-      margin-top: 1.5rem;
-      flex-wrap: wrap;
-    }
-    .role-hint {
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: 20px;
-      padding: 4px 12px;
-      font-size: 0.72rem;
-      font-family: var(--font-mono);
-      color: var(--muted);
-    }
+    .auth-wrapper{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:2rem}
+    .auth-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:2.5rem;width:100%;max-width:420px}
+    .auth-logo{text-align:center;margin-bottom:2rem}
+    .auth-logo .logo-icon{font-size:2.5rem;color:var(--accent);display:block;margin-bottom:8px}
+    .auth-logo h1{font-size:1.8rem;font-weight:800;letter-spacing:-0.04em}
+    .auth-logo p{color:var(--muted);font-size:0.85rem;margin-top:4px}
+    .auth-group{display:flex;flex-direction:column;gap:6px;margin-bottom:1.2rem}
+    .auth-group label{font-size:0.75rem;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);font-family:var(--font-mono)}
+    .auth-group input{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;color:var(--text);font-family:var(--font-display);font-size:0.95rem;outline:none;transition:border-color 0.2s;width:100%}
+    .auth-group input:focus{border-color:var(--accent)}
+    .auth-btn{width:100%;background:var(--accent);color:#0d0f14;border:none;border-radius:8px;padding:13px;font-family:var(--font-display);font-size:0.95rem;font-weight:700;cursor:pointer;transition:background 0.2s;margin-top:0.5rem}
+    .auth-btn:hover{background:#f5d454}
+    .auth-btn:disabled{opacity:0.6;cursor:not-allowed}
+    .bio-btn{width:100%;background:transparent;border:1px solid var(--border);color:var(--text);border-radius:8px;padding:12px 16px;font-family:var(--font-display);font-size:0.9rem;font-weight:600;cursor:pointer;transition:all 0.2s;margin-top:0.75rem;display:flex;align-items:center;justify-content:center;gap:10px}
+    .bio-btn:hover{border-color:var(--accent);color:var(--accent)}
+    .bio-btn:disabled{opacity:0.5;cursor:not-allowed}
+    .divider{display:flex;align-items:center;gap:12px;margin:1.2rem 0 0}
+    .divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border)}
+    .divider span{color:var(--muted);font-size:0.75rem;font-family:var(--font-mono)}
+    .auth-error{background:rgba(247,96,79,0.1);border:1px solid rgba(247,96,79,0.3);color:#f7604f;border-radius:8px;padding:10px 14px;font-size:0.82rem;font-family:var(--font-mono);margin-bottom:1rem;display:none}
+    .auth-error.show{display:block}
+    .auth-footer{text-align:center;margin-top:1.5rem;font-size:0.82rem;color:var(--muted)}
+    .auth-footer a{color:var(--accent);text-decoration:none;font-weight:600}
+    .auth-footer a:hover{text-decoration:underline}
+    .role-hints{display:flex;gap:8px;justify-content:center;margin-top:1.5rem;flex-wrap:wrap}
+    .role-hint{background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:4px 12px;font-size:0.72rem;font-family:var(--font-mono);color:var(--muted)}
   </style>
 </head>
 <body>
+<div class="auth-wrapper">
+  <div class="auth-card">
 
-  <div class="auth-wrapper">
-    <div class="auth-card">
-
-      <!-- Logo and title -->
-      <div class="auth-logo">
-        <span class="logo-icon">◈</span>
-        <h1>GradeVault</h1>
-        <p>Sign in to your account</p>
-      </div>
-
-      <!-- Error message box (hidden until login fails) -->
-      <div class="auth-error" id="login-error">
-        Invalid username or password. Please try again.
-      </div>
-
-      <!-- Username field -->
-      <div class="auth-group">
-        <label for="username">Username</label>
-        <input type="text" id="username" placeholder="Enter your username" autocomplete="username"/>
-      </div>
-
-      <!-- Password field with eye toggle -->
-      <div class="auth-group">
-        <label for="password">Password</label>
-        <div class="password-wrap">
-          <input type="password" id="password" placeholder="Enter your password" autocomplete="current-password"/>
-          <button type="button" class="eye-btn" onclick="togglePassword('password', this)" title="Show/hide password">
-            <!-- Eye icon (shown when password is hidden) -->
-            <svg id="eye-icon-password" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-            </svg>
-          </button>
-        </div>
-      </div>
-
-      <!-- Login button -->
-      <button class="auth-btn" id="login-btn">Sign In</button>
-
-      <!-- Link to register page for students -->
-      <div class="auth-footer">
-        Are you a student? <a href="/register">Register here</a>
-      </div>
-
-      <!-- Forgot password -->
-      <div class="auth-footer" style="margin-top:0.5rem">
-        Forgot your password? <a href="/forgot-password">Reset it here</a>
-      </div>
-
-      <!-- Role hints so users know what accounts exist -->
-      <div class="role-hints">
-        <span class="role-hint">👨‍💼 Admin</span>
-        <span class="role-hint">👨‍🏫 Teacher</span>
-        <span class="role-hint">👨‍🎓 Student</span>
-      </div>
-
+    <div class="auth-logo">
+      <span class="logo-icon">◈</span>
+      <h1>GradeVault</h1>
+      <p>Sign in to your account</p>
     </div>
+
+    <div class="auth-error" id="login-error"></div>
+
+    <div class="auth-group">
+      <label for="username">Username</label>
+      <input type="text" id="username" placeholder="Enter your username" autocomplete="username"/>
+    </div>
+
+    <div class="auth-group">
+      <label for="password">Password</label>
+      <div class="password-wrap">
+        <input type="password" id="password" placeholder="Enter your password" autocomplete="current-password"/>
+        <button type="button" class="eye-btn" onclick="togglePw('password',this)">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:18px;height:18px"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <button class="auth-btn" id="login-btn" onclick="passwordLogin()">Sign In</button>
+
+    <div class="divider"><span>or sign in with</span></div>
+
+    <button class="bio-btn" id="bio-btn" onclick="biometricLogin()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;flex-shrink:0">
+        <path d="M12 2C9.24 2 6.75 3.1 4.93 4.93"/><path d="M19.07 4.93A9.97 9.97 0 0 1 22 12"/>
+        <path d="M2 12a10 10 0 0 0 10 10"/><path d="M12 7a5 5 0 0 1 5 5c0 1.66-.52 3.19-1.41 4.44"/>
+        <path d="M7.41 16.44A5 5 0 0 1 7 14.5v-.5"/><path d="M9 9.34A5 5 0 0 1 12 9a5 5 0 0 1 4.66 3.13"/>
+        <path d="M16.85 13c.1.48.15.98.15 1.5 0 3.31-2.69 6-6 6"/><path d="M12 17a3 3 0 0 1-3-3v-2a3 3 0 0 1 6 0v2"/>
+      </svg>
+      Fingerprint / Face ID
+    </button>
+
+    <div class="auth-footer" style="margin-top:1.2rem">
+      Are you a student? <a href="/register">Register here</a>
+    </div>
+    <div class="auth-footer" style="margin-top:0.4rem">
+      Forgot your password? <a href="/forgot-password">Reset it here</a>
+    </div>
+
+    <div class="role-hints">
+      <span class="role-hint">👨‍💼 Admin</span>
+      <span class="role-hint">👨‍🏫 Teacher</span>
+      <span class="role-hint">👨‍🎓 Student</span>
+    </div>
+
   </div>
+</div>
+<script>
+  // ── Helpers ──────────────────────────────────────────────────────────────
+  function b64urlToBuffer(b){
+    const pad='='.repeat((4-b.length%4)%4);
+    const b64=(b+pad).replace(/-/g,'+').replace(/_/g,'/');
+    const bin=atob(b64); const buf=new ArrayBuffer(bin.length); const v=new Uint8Array(buf);
+    for(let i=0;i<bin.length;i++) v[i]=bin.charCodeAt(i); return buf;
+  }
+  function bufferToB64url(buf){
+    const v=new Uint8Array(buf); let bin='';
+    for(let i=0;i<v.byteLength;i++) bin+=String.fromCharCode(v[i]);
+    return btoa(bin).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+  }
+  function showErr(msg){const e=document.getElementById('login-error');e.textContent=msg;e.classList.add('show')}
+  function hideErr(){document.getElementById('login-error').classList.remove('show')}
 
-  <script>
-    // ── Login Logic ──────────────────────────────────────────
+  function togglePw(id,btn){
+    const inp=document.getElementById(id),h=inp.type==='password';
+    inp.type=h?'text':'password';
+    btn.innerHTML=h
+      ?'<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:18px;height:18px"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.477 0-8.268-2.943-9.542-7a9.956 9.956 0 012.223-3.592M6.53 6.533A9.956 9.956 0 0112 5c4.477 0 8.268 2.943 9.542 7a9.978 9.978 0 01-4.072 5.293M15 12a3 3 0 11-4.243-4.243M3 3l18 18"/></svg>'
+      :'<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:18px;height:18px"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>';
+  }
 
-    // ── Eye icon toggle — show/hide password ──
-    function togglePassword(inputId, btn) {
-      const input = document.getElementById(inputId);
-      const isHidden = input.type === "password";
+  // ── Password login ───────────────────────────────────────────────────────
+  document.getElementById('username').addEventListener('keydown',e=>{if(e.key==='Enter')passwordLogin()});
+  document.getElementById('password').addEventListener('keydown',e=>{if(e.key==='Enter')passwordLogin()});
 
-      // Switch between password (hidden) and text (visible)
-      input.type = isHidden ? "text" : "password";
+  async function passwordLogin(){
+    hideErr();
+    const username=document.getElementById('username').value.trim();
+    const password=document.getElementById('password').value;
+    if(!username||!password){showErr('Please enter both username and password.');return;}
+    const res=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password})});
+    const data=await res.json();
+    if(data.error) showErr(data.error);
+    else window.location.href=data.redirect;
+  }
 
-      // Swap the icon between eye and eye-slash
-      btn.innerHTML = isHidden
-        ? // Eye-slash icon (shown when password is visible)
-          `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:18px;height:18px">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.477 0-8.268-2.943-9.542-7a9.956 9.956 0 012.223-3.592M6.53 6.533A9.956 9.956 0 0112 5c4.477 0 8.268 2.943 9.542 7a9.978 9.978 0 01-4.072 5.293M15 12a3 3 0 11-4.243-4.243M3 3l18 18"/>
-          </svg>`
-        : // Eye icon (shown when password is hidden)
-          `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:18px;height:18px">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-          </svg>`;
+  // ── Biometric login ──────────────────────────────────────────────────────
+  async function biometricLogin(){
+    hideErr();
+    const btn=document.getElementById('bio-btn');
+    const username=document.getElementById('username').value.trim();
+
+    if(!window.PublicKeyCredential){
+      showErr('Your browser or device does not support biometric login.');
+      return;
     }
+    try{
+      btn.disabled=true;
+      btn.innerHTML='<span style="font-size:1.1rem">⏳</span> Verifying biometric…';
 
-    // Allow pressing Enter key to trigger login
-    document.getElementById("password").addEventListener("keydown", (e) => {
-      if (e.key === "Enter") login();
-    });
-    document.getElementById("username").addEventListener("keydown", (e) => {
-      if (e.key === "Enter") login();
-    });
-
-    // Login button click
-    document.getElementById("login-btn").addEventListener("click", login);
-
-    async function login() {
-      const username = document.getElementById("username").value.trim();
-      const password = document.getElementById("password").value;
-      const errorBox = document.getElementById("login-error");
-
-      // Basic validation — fields must not be empty
-      if (!username || !password) {
-        errorBox.textContent = "Please enter both username and password.";
-        errorBox.classList.add("show");
-        return;
-      }
-
-      // Send POST request to /api/login with username and password
-      const res = await fetch("/api/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password })
+      // Step 1: Get challenge from server
+      const optRes=await fetch('/api/webauthn/login/begin',{
+        method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username})
       });
+      const opts=await optRes.json();
+      if(opts.error) throw new Error(opts.error);
 
-      const data = await res.json();
-
-      if (data.error) {
-        // Show error message if login failed
-        errorBox.textContent = data.error;
-        errorBox.classList.add("show");
-      } else {
-        // Redirect to the correct dashboard based on role
-        // data.role will be "admin", "teacher", or "student"
-        window.location.href = data.redirect;
+      // Step 2: Convert base64url → ArrayBuffer
+      opts.challenge=b64urlToBuffer(opts.challenge);
+      if(opts.allowCredentials){
+        opts.allowCredentials=opts.allowCredentials.map(c=>({...c,id:b64urlToBuffer(c.id)}));
       }
-    }
-  </script>
 
+      // Step 3: Browser shows fingerprint / Face ID prompt
+      const cred=await navigator.credentials.get({publicKey:opts});
+
+      // Step 4: Send response to server for verification
+      const payload={
+        id:cred.id, rawId:bufferToB64url(cred.rawId),
+        response:{
+          authenticatorData: bufferToB64url(cred.response.authenticatorData),
+          clientDataJSON:    bufferToB64url(cred.response.clientDataJSON),
+          signature:         bufferToB64url(cred.response.signature),
+          userHandle: cred.response.userHandle ? bufferToB64url(cred.response.userHandle) : null,
+        },
+        type:cred.type,
+        clientExtensionResults:cred.getClientExtensionResults(),
+      };
+
+      const verRes=await fetch('/api/webauthn/login/complete',{
+        method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)
+      });
+      const result=await verRes.json();
+      if(result.error) throw new Error(result.error);
+      window.location.href=result.redirect;
+
+    }catch(e){
+      showErr(e.name==='NotAllowedError'
+        ? 'Biometric cancelled or timed out. Please try again.'
+        : e.message || 'Biometric login failed. Try your password instead.');
+      btn.disabled=false;
+      btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;flex-shrink:0"><path d="M12 2C9.24 2 6.75 3.1 4.93 4.93"/><path d="M19.07 4.93A9.97 9.97 0 0 1 22 12"/><path d="M2 12a10 10 0 0 0 10 10"/><path d="M12 7a5 5 0 0 1 5 5c0 1.66-.52 3.19-1.41 4.44"/><path d="M7.41 16.44A5 5 0 0 1 7 14.5v-.5"/><path d="M9 9.34A5 5 0 0 1 12 9a5 5 0 0 1 4.66 3.13"/><path d="M16.85 13c.1.48.15.98.15 1.5 0 3.31-2.69 6-6 6"/><path d="M12 17a3 3 0 0 1-3-3v-2a3 3 0 0 1 6 0v2"/></svg>Fingerprint / Face ID';
+    }
+  }
+</script>
 </body>
 </html>
