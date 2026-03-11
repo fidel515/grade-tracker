@@ -74,15 +74,21 @@ def send_reset_email(to_email, token):
     logging.info(f"[EMAIL DEBUG] Reset link: {reset_link}")
 
     try:
-        with smtplib.SMTP(MAIL_HOST, MAIL_PORT, timeout=15) as server:
-            server.ehlo()
-            server.starttls()
-            server.ehlo()
-            server.login(MAIL_USERNAME, MAIL_PASSWORD)
-            server.sendmail(MAIL_FROM, to_email, msg.as_string())
+        try:
+            with smtplib.SMTP_SSL(MAIL_HOST, 465, timeout=20) as server:
+                server.login(MAIL_USERNAME, MAIL_PASSWORD)
+                server.sendmail(MAIL_FROM, to_email, msg.as_string())
+        except Exception as ssl_err:
+            logging.error(f"[EMAIL] SSL 465 failed: {ssl_err}, trying TLS 587")
+            with smtplib.SMTP(MAIL_HOST, 587, timeout=20) as server:
+                server.ehlo()
+                server.starttls()
+                server.ehlo()
+                server.login(MAIL_USERNAME, MAIL_PASSWORD)
+                server.sendmail(MAIL_FROM, to_email, msg.as_string())
         logging.info(f"[EMAIL DEBUG] Email sent successfully to {to_email}")
     except smtplib.SMTPAuthenticationError:
-        print("[EMAIL ERROR] Authentication failed - check Gmail app password")
+        logging.error("[EMAIL ERROR] Authentication failed - check SMTP credentials")
         raise Exception("Email authentication failed. Please contact the administrator.")
     except smtplib.SMTPException as e:
         logging.error(f"[EMAIL ERROR] SMTP error: {e}")
