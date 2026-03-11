@@ -71,6 +71,7 @@
     <button class="tab" data-tab="charts">Charts</button>
     <button class="tab" data-tab="report">School Report</button>
     <button class="tab" data-tab="password">Change Password</button>
+    <button class="tab" data-tab="biometrics">🔑 Biometrics</button>
   </div>
 
   <!-- OVERVIEW TAB -->
@@ -227,6 +228,22 @@
     </div>
   </div>
 
+  <!-- BIOMETRICS TAB -->
+  <div id="tab-biometrics" class="tab-content">
+    <div class="page-title"><h1>Biometric Login</h1><p>Register your fingerprint or Face ID to sign in without a password</p></div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:2rem;max-width:520px">
+      <h2 style="font-size:0.82rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);font-family:var(--font-mono);margin-bottom:1rem">Registered Devices</h2>
+      <div id="bio-list"><div style="color:var(--muted);font-family:var(--font-mono);font-size:0.85rem">Loading…</div></div>
+      <div style="margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid var(--border)">
+        <button class="btn-primary" id="bio-register-btn" onclick="registerBiometric()" style="display:flex;align-items:center;gap:8px;width:fit-content">Register Fingerprint / Face ID</button>
+        <div id="bio-register-msg" class="msg" style="margin-top:10px"></div>
+      </div>
+      <div style="margin-top:1.5rem;background:rgba(79,142,247,0.08);border:1px solid rgba(79,142,247,0.2);border-radius:8px;padding:12px 14px;font-size:0.82rem;color:var(--muted);font-family:var(--font-mono);line-height:1.7">
+        💡 Works with Touch ID, Face ID, Windows Hello, and Android fingerprint. After registering, use the Fingerprint / Face ID button on the login page to sign in instantly. Requires HTTPS — already active on Render.
+      </div>
+    </div>
+  </div>
+
 </main>
 <!-- Subject Editor Modal -->
 <div class="modal-overlay" id="subject-editor-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center">
@@ -281,8 +298,9 @@
       if (btn.dataset.tab === "overview")  loadOverview();
       if (btn.dataset.tab === "teachers")  { loadTeachers(); loadSubjectCheckboxes(); }
       if (btn.dataset.tab === "students")  loadStudents();
-      if (btn.dataset.tab === "charts")    loadCharts();
-      if (btn.dataset.tab === "report")    loadSchoolReport();
+      if (btn.dataset.tab === "charts")      loadCharts();
+      if (btn.dataset.tab === "report")      loadSchoolReport();
+      if (btn.dataset.tab === "biometrics")  loadBiometrics();
     });
   });
 
@@ -747,3 +765,84 @@
 </script>
 </body>
 </html>
+<script>
+// ── WebAuthn / Biometric functions ───────────────────────────────────────
+function b64urlToBuffer(b){
+  const pad='='.repeat((4-b.length%4)%4);
+  const b64=(b+pad).replace(/-/g,'+').replace(/_/g,'/');
+  const bin=atob(b64);const buf=new ArrayBuffer(bin.length);const v=new Uint8Array(buf);
+  for(let i=0;i<bin.length;i++) v[i]=bin.charCodeAt(i);return buf;
+}
+function bufferToB64url(buf){
+  const v=new Uint8Array(buf);let bin='';
+  for(let i=0;i<v.byteLength;i++) bin+=String.fromCharCode(v[i]);
+  return btoa(bin).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+}
+
+async function loadBiometrics(){
+  try{
+    const res=await fetch('/api/webauthn/credentials');
+    const creds=await res.json();
+    const el=document.getElementById('bio-list');
+    if(!el) return;
+    if(!creds.length){
+      el.innerHTML='<div style="background:var(--surface2);border-radius:8px;padding:12px 16px;color:var(--muted);font-family:var(--font-mono);font-size:0.85rem">No biometrics registered yet.</div>';
+      return;
+    }
+    el.innerHTML=creds.map((c,i)=>`
+      <div style="display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border-radius:8px;padding:10px 14px;margin-bottom:8px">
+        <div>
+          <div style="font-weight:600;font-size:0.9rem">🔑 ${escHtml(c.device_name||'Device '+(i+1))}</div>
+          <div style="font-size:0.75rem;color:var(--muted);font-family:var(--font-mono)">Added ${c.created_at}</div>
+        </div>
+        <button class="btn-danger" style="padding:5px 12px;font-size:0.8rem" onclick="removeBiometric(${c.id})">Remove</button>
+      </div>`).join('');
+  }catch(e){console.error('loadBiometrics:',e);}
+}
+
+async function registerBiometric(){
+  const btn=document.getElementById('bio-register-btn');
+  const msg=document.getElementById('bio-register-msg');
+  msg.textContent=''; msg.className='msg';
+  if(!window.PublicKeyCredential){
+    msg.textContent='❌ Your browser or device does not support biometric login.';
+    msg.className='msg error'; return;
+  }
+  try{
+    btn.disabled=true; btn.textContent='⏳ Waiting for biometric…';
+    const optRes=await fetch('/api/webauthn/register/begin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})});
+    const opts=await optRes.json();
+    if(opts.error) throw new Error(opts.error);
+    opts.challenge=b64urlToBuffer(opts.challenge);
+    opts.user.id=b64urlToBuffer(opts.user.id);
+    if(opts.excludeCredentials)
+      opts.excludeCredentials=opts.excludeCredentials.map(c=>({...c,id:b64urlToBuffer(c.id)}));
+    const cred=await navigator.credentials.create({publicKey:opts});
+    const ua=navigator.userAgent;
+    const deviceName=ua.includes('Mac')?'Mac / Touch ID':ua.includes('Win')?'Windows Hello':ua.includes('Android')?'Android Fingerprint':(ua.includes('iPhone')||ua.includes('iPad'))?'iPhone / Face ID':'Biometric Device';
+    const payload={
+      id:cred.id,rawId:bufferToB64url(cred.rawId),
+      response:{attestationObject:bufferToB64url(cred.response.attestationObject),clientDataJSON:bufferToB64url(cred.response.clientDataJSON)},
+      type:cred.type,clientExtensionResults:cred.getClientExtensionResults(),deviceName
+    };
+    const verRes=await fetch('/api/webauthn/register/complete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const result=await verRes.json();
+    if(result.error) throw new Error(result.error);
+    msg.textContent='✅ '+result.message; msg.className='msg success';
+    showToast('Biometric registered!'); loadBiometrics();
+  }catch(e){
+    msg.textContent=e.name==='NotAllowedError'?'❌ Cancelled or not permitted. Please try again.':'❌ '+(e.message||'Registration failed.');
+    msg.className='msg error';
+  }finally{
+    btn.disabled=false; btn.textContent='Register Fingerprint / Face ID';
+  }
+}
+
+async function removeBiometric(id){
+  if(!confirm('Remove this biometric device?')) return;
+  const res=await fetch('/api/webauthn/credentials/'+id,{method:'DELETE'});
+  const data=await res.json();
+  if(data.error) showToast(data.error,'error');
+  else{ showToast('Biometric removed'); loadBiometrics(); }
+}
+</script>
