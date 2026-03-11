@@ -14,9 +14,7 @@ import psycopg2.extras
 import re
 import os
 import secrets
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+import requests
 from datetime import datetime, timedelta
 
 app = Flask(__name__)
@@ -37,23 +35,14 @@ def test_email():
 # ============================================================
 # EMAIL CONFIG (Gmail SMTP)
 # ============================================================
-MAIL_HOST     = "smtp-relay.brevo.com"
-MAIL_PORT     = 587
-MAIL_USERNAME = os.environ.get("MAIL_USERNAME")
-MAIL_PASSWORD = os.environ.get("MAIL_PASSWORD")
+BREVO_API_KEY = os.environ.get("BREVO_API_KEY")
 MAIL_FROM     = os.environ.get("MAIL_FROM", "fidelclinton4@gmail.com")
+MAIL_FROM_NAME = os.environ.get("MAIL_FROM_NAME", "GradeVault")
 APP_BASE_URL  = os.environ.get("APP_BASE_URL", "https://grade-tracker-pq0y.onrender.com")
 
 def send_reset_email(to_email, token):
-    """Send password reset email via Gmail SMTP."""
+    """Send password reset email via Brevo HTTP API."""
     reset_link = f"{APP_BASE_URL}/reset-password?token={token}"
-
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = "GradeVault — Password Reset Request"
-    msg["From"]    = f"GradeVault <{MAIL_FROM}>"
-    msg["To"]      = to_email
-
-    text = f"Reset your GradeVault password:\n{reset_link}\n\nExpires in 30 minutes. Ignore if you did not request this."
 
     html = f"""
     <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;background:#0f1117;color:#f0f0f0;border-radius:12px;padding:2rem">
@@ -65,37 +54,36 @@ def send_reset_email(to_email, token):
       <p style="color:#444;font-size:0.75rem;margin-top:1rem">— GradeVault System</p>
     </div>
     """
-    msg.attach(MIMEText(text, "plain"))
-    msg.attach(MIMEText(html, "html"))
 
     logging.info(f"[EMAIL DEBUG] Attempting to send to: {to_email}")
-    logging.info(f"[EMAIL DEBUG] MAIL_USERNAME: {MAIL_USERNAME}")
-    logging.info(f"[EMAIL DEBUG] MAIL_PASSWORD set: {'yes' if MAIL_PASSWORD else 'NO - EMPTY!'}")
     logging.info(f"[EMAIL DEBUG] Reset link: {reset_link}")
+    logging.info(f"[EMAIL DEBUG] BREVO_API_KEY set: {'yes' if BREVO_API_KEY else 'NO - EMPTY!'}")
 
-    try:
-        try:
-            with smtplib.SMTP_SSL(MAIL_HOST, 465, timeout=20) as server:
-                server.login(MAIL_USERNAME, MAIL_PASSWORD)
-                server.sendmail(MAIL_FROM, to_email, msg.as_string())
-        except Exception as ssl_err:
-            logging.error(f"[EMAIL] SSL 465 failed: {ssl_err}, trying TLS 587")
-            with smtplib.SMTP(MAIL_HOST, 587, timeout=20) as server:
-                server.ehlo()
-                server.starttls()
-                server.ehlo()
-                server.login(MAIL_USERNAME, MAIL_PASSWORD)
-                server.sendmail(MAIL_FROM, to_email, msg.as_string())
-        logging.info(f"[EMAIL DEBUG] Email sent successfully to {to_email}")
-    except smtplib.SMTPAuthenticationError:
-        logging.error("[EMAIL ERROR] Authentication failed - check SMTP credentials")
-        raise Exception("Email authentication failed. Please contact the administrator.")
-    except smtplib.SMTPException as e:
-        logging.error(f"[EMAIL ERROR] SMTP error: {e}")
-        raise Exception(f"Email sending failed: {str(e)}")
-    except Exception as e:
-        logging.error(f"[EMAIL ERROR] Unexpected error: {e}")
-        raise
+    payload = {
+        "sender": {"name": MAIL_FROM_NAME, "email": MAIL_FROM},
+        "to": [{"email": to_email}],
+        "subject": "GradeVault — Password Reset Request",
+        "htmlContent": html,
+        "textContent": f"Reset your GradeVault password: {reset_link}\n\nExpires in 30 minutes."
+    }
+
+    response = requests.post(
+        "https://api.brevo.com/v3/smtp/email",
+        headers={
+            "accept": "application/json",
+            "api-key": BREVO_API_KEY,
+            "content-type": "application/json"
+        },
+        json=payload,
+        timeout=20
+    )
+
+    logging.info(f"[EMAIL DEBUG] Brevo response: {response.status_code} {response.text}")
+
+    if response.status_code not in (200, 201):
+        raise Exception(f"Brevo API error {response.status_code}: {response.text}")
+
+    logging.info(f"[EMAIL DEBUG] Email sent successfully to {to_email}")
 
 # ============================================================
 # DATABASE HELPERS
