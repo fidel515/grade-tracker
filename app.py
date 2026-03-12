@@ -1,7 +1,7 @@
 # ============================================================
 # app.py  —  GradeVault (Flask + PostgreSQL + WebAuthn)
 # ============================================================
-import sys, logging, base64
+import sys, logging
 logging.basicConfig(level=logging.INFO, stream=sys.stderr, force=True)
 
 # Load .env file for local development (ignored on Render)
@@ -20,26 +20,6 @@ app = Flask(__name__)
 app.secret_key = "gradevault_secret_key_2024"
 app.config["SESSION_PERMANENT"] = False
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(hours=8)
-
-# ── WebAuthn ────────────────────────────────────────────────
-try:
-    from webauthn import (
-        generate_registration_options, verify_registration_response,
-        generate_authentication_options, verify_authentication_response,
-        options_to_json, base64url_to_bytes,
-    )
-    from webauthn.helpers.structs import (
-        AuthenticatorSelectionCriteria, UserVerificationRequirement,
-        AuthenticatorAttachment, ResidentKeyRequirement,
-        PublicKeyCredentialDescriptor,
-    )
-    WEBAUTHN_AVAILABLE = True
-except ImportError:
-    WEBAUTHN_AVAILABLE = False
-    logging.warning("py_webauthn not installed — biometric auth disabled.")
-
-RP_NAME = "GradeVault"
-RP_ID   = os.environ.get("WEBAUTHN_RP_ID", "localhost")
 
 # ── Email ────────────────────────────────────────────────────
 BREVO_API_KEY  = os.environ.get("BREVO_API_KEY")
@@ -99,11 +79,6 @@ def init_db():
         id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         token TEXT UNIQUE NOT NULL, expires_at TIMESTAMP NOT NULL,
         used BOOLEAN DEFAULT FALSE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""")
-    cur.execute("""CREATE TABLE IF NOT EXISTS webauthn_credentials (
-        id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-        credential_id TEXT UNIQUE NOT NULL, public_key BYTEA NOT NULL,
-        sign_count INTEGER DEFAULT 0, device_name TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""")
     conn.commit()
     cur.execute("SELECT id FROM users WHERE role='admin'")
     if not cur.fetchone():
@@ -270,135 +245,6 @@ def reset_password():
     cur.execute("UPDATE password_reset_tokens SET used=TRUE WHERE id=%s",(rec["id"],))
     conn.commit(); cur.close(); conn.close()
     return jsonify({"message":"Password reset successfully! You can now log in."})
-
-
-# ── WebAuthn API ─────────────────────────────────────────────
-@app.route("/api/webauthn/register/begin", methods=["POST"])
-def webauthn_register_begin():
-    if not WEBAUTHN_AVAILABLE: return jsonify({"error":"Biometric auth not configured on server"}), 503
-    u = get_current_user()
-    if not u: return jsonify({"error":"Unauthorized"}), 403
-    conn = get_db(); cur = conn.cursor()
-    cur.execute("SELECT credential_id FROM webauthn_credentials WHERE user_id=%s",(u["id"],))
-    exclude = [PublicKeyCredentialDescriptor(id=base64url_to_bytes(r["credential_id"])) for r in cur.fetchall()]
-    cur.close(); conn.close()
-    opts = generate_registration_options(
-        rp_id=RP_ID, rp_name=RP_NAME,
-        user_id=str(u["id"]).encode(), user_name=u["username"], user_display_name=u["fullname"],
-        exclude_credentials=exclude,
-        authenticator_selection=AuthenticatorSelectionCriteria(
-            authenticator_attachment=AuthenticatorAttachment.PLATFORM,
-            user_verification=UserVerificationRequirement.REQUIRED,
-            resident_key=ResidentKeyRequirement.PREFERRED,
-        ),
-    )
-    session["wn_reg_challenge"] = base64.b64encode(opts.challenge).decode()
-    return options_to_json(opts), 200, {"Content-Type":"application/json"}
-
-
-@app.route("/api/webauthn/register/complete", methods=["POST"])
-def webauthn_register_complete():
-    if not WEBAUTHN_AVAILABLE: return jsonify({"error":"Biometric auth not configured"}), 503
-    u = get_current_user()
-    if not u: return jsonify({"error":"Unauthorized"}), 403
-    ch = session.get("wn_reg_challenge")
-    if not ch: return jsonify({"error":"Session expired — please try again"}), 400
-    try:
-        cd = request.get_json()
-        ver = verify_registration_response(
-            credential=cd, expected_challenge=base64.b64decode(ch),
-            expected_rp_id=RP_ID, expected_origin=APP_BASE_URL,
-            require_user_verification=True,
-        )
-        cid = base64.urlsafe_b64encode(ver.credential_id).rstrip(b"=").decode()
-        device = cd.get("deviceName","Biometric Device")
-        conn = get_db(); cur = conn.cursor()
-        cur.execute("""INSERT INTO webauthn_credentials (user_id,credential_id,public_key,sign_count,device_name)
-            VALUES (%s,%s,%s,%s,%s) ON CONFLICT (credential_id) DO UPDATE
-            SET public_key=EXCLUDED.public_key, sign_count=EXCLUDED.sign_count""",
-            (u["id"],cid,ver.credential_public_key,ver.sign_count,device))
-        conn.commit(); cur.close(); conn.close()
-        session.pop("wn_reg_challenge", None)
-        return jsonify({"message":"Biometric registered successfully!"})
-    except Exception as e:
-        logging.error(f"[WebAuthn] Register error: {e}")
-        return jsonify({"error":f"Registration failed: {e}"}), 400
-
-
-@app.route("/api/webauthn/login/begin", methods=["POST"])
-def webauthn_login_begin():
-    if not WEBAUTHN_AVAILABLE: return jsonify({"error":"Biometric auth not configured"}), 503
-    d = request.get_json(); username = d.get("username","").strip()
-    allow = []
-    if username:
-        conn = get_db(); cur = conn.cursor()
-        cur.execute("SELECT id FROM users WHERE username=%s",(username,))
-        found = cur.fetchone()
-        if found:
-            cur.execute("SELECT credential_id FROM webauthn_credentials WHERE user_id=%s",(found["id"],))
-            allow = [PublicKeyCredentialDescriptor(id=base64url_to_bytes(r["credential_id"])) for r in cur.fetchall()]
-        cur.close(); conn.close()
-    opts = generate_authentication_options(
-        rp_id=RP_ID, allow_credentials=allow,
-        user_verification=UserVerificationRequirement.REQUIRED,
-    )
-    session["wn_auth_challenge"] = base64.b64encode(opts.challenge).decode()
-    return options_to_json(opts), 200, {"Content-Type":"application/json"}
-
-
-@app.route("/api/webauthn/login/complete", methods=["POST"])
-def webauthn_login_complete():
-    if not WEBAUTHN_AVAILABLE: return jsonify({"error":"Biometric auth not configured"}), 503
-    ch = session.get("wn_auth_challenge")
-    if not ch: return jsonify({"error":"Session expired — please try again"}), 400
-    try:
-        cd = request.get_json(); cred_id = cd.get("id","")
-        conn = get_db(); cur = conn.cursor()
-        cur.execute("""SELECT wc.id, wc.credential_id, wc.public_key, wc.sign_count,
-                              u.id as user_id, u.role, u.fullname
-                       FROM webauthn_credentials wc JOIN users u ON wc.user_id=u.id
-                       WHERE wc.credential_id=%s""", (cred_id,))
-        rec = cur.fetchone()
-        if not rec:
-            cur.close(); conn.close()
-            return jsonify({"error":"Credential not found. Please register your biometric first."}), 404
-        ver = verify_authentication_response(
-            credential=cd, expected_challenge=base64.b64decode(ch),
-            expected_rp_id=RP_ID, expected_origin=APP_BASE_URL,
-            credential_public_key=bytes(rec["public_key"]),
-            credential_current_sign_count=rec["sign_count"],
-            require_user_verification=True,
-        )
-        cur.execute("UPDATE webauthn_credentials SET sign_count=%s WHERE id=%s",(ver.new_sign_count,rec["id"]))
-        conn.commit(); cur.close(); conn.close()
-        session["user_id"] = rec["user_id"]; session["role"] = rec["role"]
-        session.pop("wn_auth_challenge", None)
-        rd = {"admin":"/dashboard/admin","teacher":"/dashboard/teacher","student":"/dashboard/student"}
-        return jsonify({"message":"Biometric login successful","fullname":rec["fullname"],"redirect":rd[rec["role"]]})
-    except Exception as e:
-        logging.error(f"[WebAuthn] Auth error: {e}")
-        return jsonify({"error":f"Biometric verification failed: {e}"}), 400
-
-
-@app.route("/api/webauthn/credentials", methods=["GET"])
-def list_biometric_credentials():
-    u = get_current_user()
-    if not u: return jsonify({"error":"Unauthorized"}), 403
-    conn = get_db(); cur = conn.cursor()
-    cur.execute("SELECT id,device_name,created_at FROM webauthn_credentials WHERE user_id=%s ORDER BY created_at DESC",(u["id"],))
-    rows = cur.fetchall(); cur.close(); conn.close()
-    return jsonify([{"id":r["id"],"device_name":r["device_name"] or "Biometric Device",
-                     "created_at":r["created_at"].strftime("%d/%m/%Y %H:%M") if r["created_at"] else "—"} for r in rows])
-
-
-@app.route("/api/webauthn/credentials/<int:cid>", methods=["DELETE"])
-def delete_biometric_credential(cid):
-    u = get_current_user()
-    if not u: return jsonify({"error":"Unauthorized"}), 403
-    conn = get_db(); cur = conn.cursor()
-    cur.execute("DELETE FROM webauthn_credentials WHERE id=%s AND user_id=%s",(cid,u["id"]))
-    conn.commit(); cur.close(); conn.close()
-    return jsonify({"message":"Biometric credential removed"})
 
 
 # ── Admin API ─────────────────────────────────────────────────
