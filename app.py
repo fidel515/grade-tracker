@@ -331,19 +331,18 @@ def webauthn_register_complete():
 def webauthn_login_begin():
     if not WEBAUTHN_AVAILABLE: return jsonify({"error":"Biometric auth not available"}), 503
     d = request.get_json(); username = d.get("username","").strip()
-    if not username: return jsonify({"error":"Please enter your username first"}), 400
-    conn = get_db(); cur = conn.cursor()
-    cur.execute("SELECT id FROM users WHERE username=%s", (username,))
-    found = cur.fetchone()
     allow = []
-    if found:
-        cur.execute("SELECT credential_id, transports FROM webauthn_credentials WHERE user_id=%s", (found["id"],))
-        allow = [PublicKeyCredentialDescriptor(
-            id=base64url_to_bytes(r["credential_id"]),
-            transports=r["transports"].split(",") if r["transports"] else ["internal"]
-        ) for r in cur.fetchall()]
-    cur.close(); conn.close()
-    if not allow: return jsonify({"error":"No biometric registered for this username. Please register first."}), 404
+    if username:
+        conn = get_db(); cur = conn.cursor()
+        cur.execute("SELECT id FROM users WHERE username=%s", (username,))
+        found = cur.fetchone()
+        if found:
+            cur.execute("SELECT credential_id, transports FROM webauthn_credentials WHERE user_id=%s", (found["id"],))
+            allow = [PublicKeyCredentialDescriptor(
+                id=base64url_to_bytes(r["credential_id"]),
+                transports=r["transports"].split(",") if r["transports"] else ["internal"]
+            ) for r in cur.fetchall()]
+        cur.close(); conn.close()
     opts = generate_authentication_options(
         rp_id=RP_ID, allow_credentials=allow,
         user_verification=UserVerificationRequirement.REQUIRED,

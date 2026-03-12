@@ -133,7 +133,6 @@
     hideErr();
     const btn=document.getElementById('bio-btn');
     const username=document.getElementById('username').value.trim();
-    if(!username){showErr('Enter your username first, then click Fingerprint / Face ID.');return;}
     if(!window.isSecureContext||!window.PublicKeyCredential){
       showErr('Biometric login requires HTTPS or localhost.');return;
     }
