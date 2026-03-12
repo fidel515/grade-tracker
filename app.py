@@ -4,6 +4,13 @@
 import sys, logging, base64
 logging.basicConfig(level=logging.INFO, stream=sys.stderr, force=True)
 
+# Load .env file for local development (ignored on Render)
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 from flask import Flask, request, jsonify, render_template, session, redirect, url_for
 from werkzeug.security import generate_password_hash, check_password_hash
 import psycopg2, psycopg2.extras, re, os, secrets, requests
