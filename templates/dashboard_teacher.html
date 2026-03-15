@@ -695,5 +695,36 @@
     else{showToast('Biometric removed');loadBiometrics();}
   }
 </script>
+
+<script>
+// ── Auto logout when browser/tab is closed ──────────────────
+window.addEventListener('pagehide', function(e) {
+  if (!e.persisted) {
+    navigator.sendBeacon('/api/logout', new Blob(
+      [JSON.stringify({})],
+      { type: 'application/json' }
+    ));
+  }
+});
+
+// ── Logout if tab hidden for 30+ minutes ────────────────────
+let hiddenSince = null;
+const MAX_HIDDEN_MINUTES = 30;
+
+document.addEventListener('visibilitychange', function() {
+  if (document.visibilityState === 'hidden') {
+    hiddenSince = Date.now();
+  } else if (document.visibilityState === 'visible') {
+    if (hiddenSince) {
+      const minutesHidden = (Date.now() - hiddenSince) / 1000 / 60;
+      if (minutesHidden >= MAX_HIDDEN_MINUTES) {
+        fetch('/api/logout', { method: 'POST' })
+          .finally(() => window.location.href = '/login');
+      }
+      hiddenSince = null;
+    }
+  }
+});
+</script>
 </body>
 </html>
