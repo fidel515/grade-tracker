@@ -164,6 +164,18 @@ def init_db():
         )
     """)
 
+    # Announcements table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS announcements (
+            id SERIAL PRIMARY KEY,
+            title TEXT NOT NULL,
+            message TEXT,
+            author_name TEXT NOT NULL,
+            created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
     conn.commit()
 
     # Create default admin if none exists
@@ -1220,6 +1232,69 @@ def school_report():
         "passing":         passing,
         "failing":         failing
     })
+
+
+# ============================================================
+# ANNOUNCEMENTS
+# ============================================================
+
+@app.route("/api/announcements", methods=["GET"])
+def get_announcements():
+    user = get_current_user()
+    if not user:
+        return jsonify({"error": "Not logged in"}), 401
+    conn = get_db()
+    cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cursor.execute("SELECT * FROM announcements ORDER BY created_at DESC LIMIT 20")
+    rows = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    result = []
+    for r in rows:
+        result.append({
+            "id":          r["id"],
+            "title":       r["title"],
+            "message":     r["message"] or "",
+            "author_name": r["author_name"],
+            "created_at":  r["created_at"].strftime("%d %b %Y, %H:%M") if r["created_at"] else "—"
+        })
+    return jsonify(result)
+
+
+@app.route("/api/announcements", methods=["POST"])
+def post_announcement():
+    user = get_current_user()
+    if not user or user["role"] != "admin":
+        return jsonify({"error": "Admin only"}), 403
+    data    = request.get_json()
+    title   = (data.get("title") or "").strip()
+    message = (data.get("message") or "").strip()
+    if not title:
+        return jsonify({"error": "Title is required"}), 400
+    conn   = get_db()
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT INTO announcements (title, message, author_name, created_by) VALUES (%s, %s, %s, %s)",
+        (title, message or None, user["fullname"], user["id"])
+    )
+    conn.commit()
+    cursor.close()
+    conn.close()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/announcements/<int:ann_id>", methods=["DELETE"])
+def delete_announcement(ann_id):
+    user = get_current_user()
+    if not user or user["role"] != "admin":
+        return jsonify({"error": "Admin only"}), 403
+    conn   = get_db()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM announcements WHERE id = %s", (ann_id,))
+    conn.commit()
+    cursor.close()
+    conn.close()
+    return jsonify({"ok": True})
 
 
 # ============================================================

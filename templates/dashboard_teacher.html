@@ -83,6 +83,7 @@
     <button class="tab active" data-tab="overview">Overview</button>
     <button class="tab" data-tab="students">Students</button>
     <button class="tab" data-tab="grades">Add Grade</button>
+    <button class="tab" data-tab="gradebook">Gradebook</button>
     <button class="tab" data-tab="charts">Charts</button>
     <button class="tab" data-tab="password">Change Password</button>
     <button class="tab" data-tab="biometrics">🔑 Biometrics</button>
@@ -91,6 +92,10 @@
   <!-- OVERVIEW -->
   <div id="tab-overview" class="tab-content active">
     <div class="page-title"><h1>My Class</h1><p>Performance overview for your subject</p></div>
+
+    <!-- Announcements banner -->
+    <div id="announcements-banner" style="margin-bottom:1.5rem"></div>
+
     <div class="stats-grid">
       <div class="stat-card"><span class="stat-label">My Students</span><span class="stat-value" id="val-total">—</span></div>
       <div class="stat-card accent"><span class="stat-label">Class Average</span><span class="stat-value" id="val-avg">—</span></div>
@@ -204,6 +209,14 @@
     </div>
   </div>
 
+  <!-- GRADEBOOK TAB -->
+  <div id="tab-gradebook" class="tab-content">
+    <div class="page-title"><h1>Gradebook</h1><p>All students and grades at a glance</p></div>
+    <div id="gradebook-container">
+      <div class="empty-state">Loading gradebook...</div>
+    </div>
+  </div>
+
   <!-- BIOMETRICS TAB -->
   <div id="tab-biometrics" class="tab-content">
     <div class="page-title"><h1>Biometric Login</h1><p>Register your fingerprint or Face ID for passwordless sign-in</p></div>
@@ -295,11 +308,12 @@
       document.querySelectorAll(".tab-content").forEach(s => s.classList.remove("active"));
       btn.classList.add("active");
       document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
-      if (btn.dataset.tab === "overview")    loadOverview();
-      if (btn.dataset.tab === "biometrics")  loadBiometrics();
-      if (btn.dataset.tab === "students")  loadStudentsTab();
-      if (btn.dataset.tab === "grades")    loadGradesTab();
-      if (btn.dataset.tab === "charts")    loadCharts();
+      if (btn.dataset.tab === "overview")   loadOverview();
+      if (btn.dataset.tab === "biometrics") loadBiometrics();
+      if (btn.dataset.tab === "students")   loadStudentsTab();
+      if (btn.dataset.tab === "grades")     loadGradesTab();
+      if (btn.dataset.tab === "charts")     loadCharts();
+      if (btn.dataset.tab === "gradebook")  loadGradebook();
     });
   });
 
@@ -633,7 +647,96 @@
 
   async function logout() { await api("POST","/api/logout"); window.location.href="/login"; }
 
+  // ── Announcements ──
+  async function loadAnnouncements() {
+    const banner = document.getElementById("announcements-banner");
+    if (!banner) return;
+    try {
+      const res = await fetch("/api/announcements");
+      const items = await res.json();
+      if (!items.length) { banner.innerHTML = ""; return; }
+      banner.innerHTML = items.map(a => `
+        <div style="background:rgba(232,197,71,0.08);border:1px solid rgba(232,197,71,0.25);border-radius:var(--radius);padding:1rem 1.2rem;margin-bottom:0.6rem">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+            <span style="font-size:0.9rem">📢</span>
+            <span style="font-weight:700;font-size:0.95rem">${escHtml(a.title)}</span>
+            <span style="font-size:0.72rem;color:var(--muted);font-family:var(--font-mono);margin-left:auto">${escHtml(a.created_at)} · ${escHtml(a.author_name)}</span>
+          </div>
+          ${a.message ? `<div style="font-size:0.85rem;color:var(--muted);padding-left:26px">${escHtml(a.message)}</div>` : ""}
+        </div>`).join("");
+    } catch(e) { banner.innerHTML = ""; }
+  }
+
+  // ── Gradebook ──
+  async function loadGradebook() {
+    const container = document.getElementById("gradebook-container");
+    container.innerHTML = '<div class="empty-state">Loading...</div>';
+    const students = await api("GET", "/api/students");
+
+    // Collect all unique subjects in CBC order
+    const subjectSet = new Set();
+    students.forEach(s => s.grades && s.grades.forEach(g => subjectSet.add(g.subject)));
+    const subjects = [...subjectSet].sort();
+
+    if (!subjects.length) {
+      container.innerHTML = '<div class="empty-state">No grades recorded yet.</div>';
+      return;
+    }
+
+    // Build lookup: studentId -> subject -> {pct, grade, max_grade}
+    const lookup = {};
+    students.forEach(s => {
+      lookup[s.id] = {};
+      if (s.grades) s.grades.forEach(g => {
+        lookup[s.id][g.subject] = Math.round((g.grade / g.max_grade) * 100);
+      });
+    });
+
+    const cbcLevel = p => p === null ? "" : p >= 75 ? "EE" : p >= 50 ? "ME" : p >= 25 ? "AE" : "BE";
+    const cbcColor = p => p === null ? "var(--muted)" : p >= 50 ? "var(--green)" : "var(--red)";
+
+    container.innerHTML = `
+      <div style="overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius)">
+        <table style="width:100%;border-collapse:collapse;background:var(--surface);min-width:${200 + subjects.length * 110}px">
+          <thead>
+            <tr style="border-bottom:2px solid var(--border)">
+              <th style="text-align:left;padding:10px 16px;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);font-family:var(--font-mono);position:sticky;left:0;background:var(--surface);z-index:1;min-width:160px">Student</th>
+              <th style="text-align:center;padding:10px 12px;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);font-family:var(--font-mono);min-width:80px">Avg</th>
+              ${subjects.map(s => `<th style="text-align:center;padding:10px 8px;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);font-family:var(--font-mono);min-width:110px">${escHtml(s)}</th>`).join("")}
+            </tr>
+          </thead>
+          <tbody>
+            ${students.map(s => {
+              const pcts = subjects.map(sub => lookup[s.id][sub] !== undefined ? lookup[s.id][sub] : null);
+              const filled = pcts.filter(p => p !== null);
+              const avg = filled.length ? Math.round(filled.reduce((a,b) => a+b, 0) / filled.length) : null;
+              return `<tr style="border-bottom:1px solid var(--border)">
+                <td style="padding:10px 16px;font-weight:600;position:sticky;left:0;background:var(--surface);z-index:1">
+                  <div>${escHtml(s.name)}</div>
+                  <div style="font-size:0.72rem;color:var(--muted);font-family:var(--font-mono)">${escHtml(s.email)}</div>
+                </td>
+                <td style="text-align:center;padding:10px 12px;font-family:var(--font-mono);font-weight:700;color:${cbcColor(avg)}">
+                  ${avg !== null ? avg + "%" : "<span style='color:var(--muted)'>—</span>"}
+                </td>
+                ${pcts.map(p => `<td style="text-align:center;padding:10px 8px">
+                  ${p !== null
+                    ? `<div style="font-family:var(--font-mono);font-size:0.9rem;font-weight:700;color:${cbcColor(p)}">${p}%</div>
+                       <div style="font-size:0.7rem;font-family:var(--font-mono);color:${cbcColor(p)};opacity:0.8">${cbcLevel(p)}</div>`
+                    : `<span style="color:var(--border);font-family:var(--font-mono);font-size:0.8rem">—</span>`
+                  }
+                </td>`).join("")}
+              </tr>`;
+            }).join("")}
+          </tbody>
+        </table>
+      </div>
+      <div style="margin-top:0.8rem;font-size:0.75rem;color:var(--muted);font-family:var(--font-mono)">
+        EE ≥75% &nbsp;·&nbsp; ME ≥50% &nbsp;·&nbsp; AE ≥25% &nbsp;·&nbsp; BE &lt;25%
+      </div>`;
+  }
+
   loadOverview();
+  loadAnnouncements();
   populateSubjectDropdown();
 
   // ── Biometric helpers ────────────────────────────────────────

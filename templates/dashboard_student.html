@@ -79,6 +79,9 @@
 
   <!-- MY GRADES TAB -->
   <div id="tab-grades" class="tab-content active">
+    <!-- Announcements banner -->
+    <div id="announcements-banner" style="margin-bottom:1.5rem"></div>
+
     <div class="stats-grid" style="margin-bottom:2rem">
       <div class="stat-card accent"><span class="stat-label">My Average</span><span class="stat-value" id="val-avg">—</span></div>
       <div class="stat-card" id="status-card"><span class="stat-label">My Status</span><span class="stat-value" id="val-status">—</span></div>
@@ -528,7 +531,28 @@
 
   async function logout() { await fetch("/api/logout",{method:"POST"}); window.location.href="/login"; }
 
+  // ── Announcements ──
+  async function loadAnnouncements() {
+    const banner = document.getElementById("announcements-banner");
+    if (!banner) return;
+    try {
+      const res = await fetch("/api/announcements");
+      const items = await res.json();
+      if (!items.length) { banner.innerHTML = ""; return; }
+      banner.innerHTML = items.map(a => `
+        <div style="background:rgba(232,197,71,0.08);border:1px solid rgba(232,197,71,0.25);border-radius:var(--radius);padding:1rem 1.2rem;margin-bottom:0.6rem">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">
+            <span style="font-size:0.9rem">📢</span>
+            <span style="font-weight:700;font-size:0.95rem">${escHtml(a.title)}</span>
+            <span style="font-size:0.72rem;color:var(--muted);font-family:var(--font-mono);margin-left:auto">${escHtml(a.created_at)}</span>
+          </div>
+          ${a.message ? `<div style="font-size:0.85rem;color:var(--muted);padding-left:26px">${escHtml(a.message)}</div>` : ""}
+        </div>`).join("");
+    } catch(e) { banner.innerHTML = ""; }
+  }
+
   loadMyGrades();
+  loadAnnouncements();
 
   // ── Biometric helpers ────────────────────────────────────────
   function b64urlToBuffer(b){
